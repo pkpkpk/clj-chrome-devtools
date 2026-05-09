@@ -14,7 +14,7 @@
 
 (s/def
  ::context-state
- #{"running" "closed" "suspended"})
+ #{"running" "interrupted" "closed" "suspended"})
 
 (s/def
  ::node-type

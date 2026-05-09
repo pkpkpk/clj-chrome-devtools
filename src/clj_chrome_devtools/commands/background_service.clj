@@ -26,7 +26,8 @@
    ::service
    ::event-name
    ::instance-id
-   ::event-metadata]))
+   ::event-metadata
+   ::storage-key]))
 (defn
  start-observing
  "Enables event updates for the service.\n\nParameters map keys:\n\n\n  Key      | Description \n  ---------|------------ \n  :service | null"

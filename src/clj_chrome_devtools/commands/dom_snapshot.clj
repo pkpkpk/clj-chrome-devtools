@@ -142,6 +142,7 @@
    ::option-selected
    ::content-document-index
    ::pseudo-type
+   ::pseudo-identifier
    ::is-clickable
    ::current-source-url
    ::origin-url]))

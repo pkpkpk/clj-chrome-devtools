@@ -23,9 +23,23 @@
    ::attached
    ::can-access-opener]
   :opt-un
-  [::opener-id
+  [::parent-id
+   ::opener-id
    ::opener-frame-id
-   ::browser-context-id]))
+   ::parent-frame-id
+   ::browser-context-id
+   ::subtype]))
+
+(s/def
+ ::filter-entry
+ (s/keys
+  :opt-un
+  [::exclude
+   ::type]))
+
+(s/def
+ ::target-filter
+ (s/coll-of any?))
 
 (s/def
  ::remote-location
@@ -33,6 +47,10 @@
   :req-un
   [::host
    ::port]))
+
+(s/def
+ ::window-state
+ #{"normal" "fullscreen" "maximized" "minimized"})
 (defn
  activate-target
  "Activates (focuses) the target.\n\nParameters map keys:\n\n\n  Key        | Description \n  -----------|------------ \n  :target-id | null"
@@ -211,22 +229,25 @@
 
 (defn
  expose-dev-tools-protocol
- "Inject object to the target's main frame that provides a communication\nchannel with browser target.\n\nInjected object will be available as `window[bindingName]`.\n\nThe object has the follwing API:\n- `binding.send(json)` - a method to send messages over the remote debugging protocol\n- `binding.onmessage = json => handleMessage(json)` - a callback that will be called for the protocol notifications and command responses.\n\nParameters map keys:\n\n\n  Key           | Description \n  --------------|------------ \n  :target-id    | null\n  :binding-name | Binding name, 'cdp' if not specified. (optional)"
+ "Inject object to the target's main frame that provides a communication\nchannel with browser target.\n\nInjected object will be available as `window[bindingName]`.\n\nThe object has the following API:\n- `binding.send(json)` - a method to send messages over the remote debugging protocol\n- `binding.onmessage = json => handleMessage(json)` - a callback that will be called for the protocol notifications and command responses.\n\nParameters map keys:\n\n\n  Key                  | Description \n  ---------------------|------------ \n  :target-id           | null\n  :binding-name        | Binding name, 'cdp' if not specified. (optional)\n  :inherit-permissions | If true, inherits the current root session's permissions (default: false). (optional)"
  ([]
   (expose-dev-tools-protocol
    (c/get-current-connection)
    {}))
- ([{:as params, :keys [target-id binding-name]}]
+ ([{:as params, :keys [target-id binding-name inherit-permissions]}]
   (expose-dev-tools-protocol
    (c/get-current-connection)
    params))
- ([connection {:as params, :keys [target-id binding-name]}]
+ ([connection
+   {:as params, :keys [target-id binding-name inherit-permissions]}]
   (cmd/command
    connection
    "Target"
    "exposeDevToolsProtocol"
    params
-   {:target-id "targetId", :binding-name "bindingName"})))
+   {:target-id "targetId",
+    :binding-name "bindingName",
+    :inherit-permissions "inheritPermissions"})))
 
 (s/fdef
  expose-dev-tools-protocol
@@ -241,7 +262,8 @@
     :req-un
     [::target-id]
     :opt-un
-    [::binding-name]))
+    [::binding-name
+     ::inherit-permissions]))
   :connection-and-params
   (s/cat
    :connection
@@ -252,7 +274,8 @@
     :req-un
     [::target-id]
     :opt-un
-    [::binding-name])))
+    [::binding-name
+     ::inherit-permissions])))
  :ret
  (s/keys))
 
@@ -324,7 +347,7 @@
 
 (defn
  get-browser-contexts
- "Returns all browser contexts created with `Target.createBrowserContext` method.\n\nReturn map keys:\n\n\n  Key                  | Description \n  ---------------------|------------ \n  :browser-context-ids | An array of browser context ids."
+ "Returns all browser contexts created with `Target.createBrowserContext` method.\n\nReturn map keys:\n\n\n  Key                         | Description \n  ----------------------------|------------ \n  :browser-context-ids        | An array of browser context ids.\n  :default-browser-context-id | The id of the default browser context if available. (optional)"
  ([]
   (get-browser-contexts
    (c/get-current-connection)
@@ -359,11 +382,13 @@
  :ret
  (s/keys
   :req-un
-  [::browser-context-ids]))
+  [::browser-context-ids]
+  :opt-un
+  [::default-browser-context-id]))
 
 (defn
  create-target
- "Creates a new page.\n\nParameters map keys:\n\n\n  Key                         | Description \n  ----------------------------|------------ \n  :url                        | The initial URL the page will be navigated to. An empty string indicates about:blank.\n  :width                      | Frame width in DIP (headless chrome only). (optional)\n  :height                     | Frame height in DIP (headless chrome only). (optional)\n  :browser-context-id         | The browser context to create the page in. (optional)\n  :enable-begin-frame-control | Whether BeginFrames for this target will be controlled via DevTools (headless chrome only,\nnot supported on MacOS yet, false by default). (optional)\n  :new-window                 | Whether to create a new Window or Tab (chrome-only, false by default). (optional)\n  :background                 | Whether to create the target in background or foreground (chrome-only,\nfalse by default). (optional)\n\nReturn map keys:\n\n\n  Key        | Description \n  -----------|------------ \n  :target-id | The id of the page opened."
+ "Creates a new page.\n\nParameters map keys:\n\n\n  Key                         | Description \n  ----------------------------|------------ \n  :url                        | The initial URL the page will be navigated to. An empty string indicates about:blank.\n  :left                       | Frame left origin in DIP (requires newWindow to be true or headless shell). (optional)\n  :top                        | Frame top origin in DIP (requires newWindow to be true or headless shell). (optional)\n  :width                      | Frame width in DIP (requires newWindow to be true or headless shell). (optional)\n  :height                     | Frame height in DIP (requires newWindow to be true or headless shell). (optional)\n  :window-state               | Frame window state (requires newWindow to be true or headless shell).\nDefault is normal. (optional)\n  :browser-context-id         | The browser context to create the page in. (optional)\n  :enable-begin-frame-control | Whether BeginFrames for this target will be controlled via DevTools (headless shell only,\nnot supported on MacOS yet, false by default). (optional)\n  :new-window                 | Whether to create a new Window or Tab (false by default, not supported by headless shell). (optional)\n  :background                 | Whether to create the target in background or foreground (false by default, not supported\nby headless shell). (optional)\n  :for-tab                    | Whether to create the target of type \"tab\". (optional)\n  :hidden                     | Whether to create a hidden target. The hidden target is observable via protocol, but not\npresent in the tab UI strip. Cannot be created with `forTab: true`, `newWindow: true` or\n`background: false`. The life-time of the tab is limited to the life-time of the session. (optional)\n  :focus                      | If specified, the option is used to determine if the new target should\nbe focused or not. By default, the focus behavior depends on the\nvalue of the background field. For example, background=false and focus=false\nwill result in the target tab being opened but the browser window remain\nunchanged (if it was in the background, it will remain in the background)\nand background=false with focus=undefined will result in the window being focused.\nUsing background: true and focus: true is not supported and will result in an error. (optional)\n\nReturn map keys:\n\n\n  Key        | Description \n  -----------|------------ \n  :target-id | The id of the page opened."
  ([]
   (create-target
    (c/get-current-connection)
@@ -371,12 +396,18 @@
  ([{:as params,
     :keys
     [url
+     left
+     top
      width
      height
+     window-state
      browser-context-id
      enable-begin-frame-control
      new-window
-     background]}]
+     background
+     for-tab
+     hidden
+     focus]}]
   (create-target
    (c/get-current-connection)
    params))
@@ -384,24 +415,36 @@
    {:as params,
     :keys
     [url
+     left
+     top
      width
      height
+     window-state
      browser-context-id
      enable-begin-frame-control
      new-window
-     background]}]
+     background
+     for-tab
+     hidden
+     focus]}]
   (cmd/command
    connection
    "Target"
    "createTarget"
    params
-   {:url "url",
+   {:enable-begin-frame-control "enableBeginFrameControl",
+    :top "top",
+    :for-tab "forTab",
+    :window-state "windowState",
     :width "width",
-    :height "height",
-    :browser-context-id "browserContextId",
-    :enable-begin-frame-control "enableBeginFrameControl",
+    :background "background",
     :new-window "newWindow",
-    :background "background"})))
+    :hidden "hidden",
+    :browser-context-id "browserContextId",
+    :url "url",
+    :focus "focus",
+    :height "height",
+    :left "left"})))
 
 (s/fdef
  create-target
@@ -416,12 +459,18 @@
     :req-un
     [::url]
     :opt-un
-    [::width
+    [::left
+     ::top
+     ::width
      ::height
+     ::window-state
      ::browser-context-id
      ::enable-begin-frame-control
      ::new-window
-     ::background]))
+     ::background
+     ::for-tab
+     ::hidden
+     ::focus]))
   :connection-and-params
   (s/cat
    :connection
@@ -432,12 +481,18 @@
     :req-un
     [::url]
     :opt-un
-    [::width
+    [::left
+     ::top
+     ::width
      ::height
+     ::window-state
      ::browser-context-id
      ::enable-begin-frame-control
      ::new-window
-     ::background])))
+     ::background
+     ::for-tab
+     ::hidden
+     ::focus])))
  :ret
  (s/keys
   :req-un
@@ -578,22 +633,22 @@
 
 (defn
  get-targets
- "Retrieves a list of available targets.\n\nReturn map keys:\n\n\n  Key           | Description \n  --------------|------------ \n  :target-infos | The list of targets."
+ "Retrieves a list of available targets.\n\nParameters map keys:\n\n\n  Key     | Description \n  --------|------------ \n  :filter | Only targets matching filter will be reported. If filter is not specified\nand target discovery is currently enabled, a filter used for target discovery\nis used for consistency. (optional)\n\nReturn map keys:\n\n\n  Key           | Description \n  --------------|------------ \n  :target-infos | The list of targets."
  ([]
   (get-targets
    (c/get-current-connection)
    {}))
- ([{:as params, :keys []}]
+ ([{:as params, :keys [filter]}]
   (get-targets
    (c/get-current-connection)
    params))
- ([connection {:as params, :keys []}]
+ ([connection {:as params, :keys [filter]}]
   (cmd/command
    connection
    "Target"
    "getTargets"
    params
-   {})))
+   {:filter "filter"})))
 
 (s/fdef
  get-targets
@@ -602,14 +657,20 @@
   :no-args
   (s/cat)
   :just-params
-  (s/cat :params (s/keys))
+  (s/cat
+   :params
+   (s/keys
+    :opt-un
+    [::filter]))
   :connection-and-params
   (s/cat
    :connection
    (s/?
     c/connection?)
    :params
-   (s/keys)))
+   (s/keys
+    :opt-un
+    [::filter])))
  :ret
  (s/keys
   :req-un
@@ -668,19 +729,19 @@
 
 (defn
  set-auto-attach
- "Controls whether to automatically attach to new targets which are considered to be related to\nthis one. When turned on, attaches to all existing related targets as well. When turned off,\nautomatically detaches from all currently attached targets.\nThis also clears all targets added by `autoAttachRelated` from the list of targets to watch\nfor creation of related targets.\n\nParameters map keys:\n\n\n  Key                         | Description \n  ----------------------------|------------ \n  :auto-attach                | Whether to auto-attach to related targets.\n  :wait-for-debugger-on-start | Whether to pause new targets when attaching to them. Use `Runtime.runIfWaitingForDebugger`\nto run paused targets.\n  :flatten                    | Enables \"flat\" access to the session via specifying sessionId attribute in the commands.\nWe plan to make this the default, deprecate non-flattened mode,\nand eventually retire it. See crbug.com/991325. (optional)"
+ "Controls whether to automatically attach to new targets which are considered\nto be directly related to this one (for example, iframes or workers).\nWhen turned on, attaches to all existing related targets as well. When turned off,\nautomatically detaches from all currently attached targets.\nThis also clears all targets added by `autoAttachRelated` from the list of targets to watch\nfor creation of related targets.\nYou might want to call this recursively for auto-attached targets to attach\nto all available targets.\n\nParameters map keys:\n\n\n  Key                         | Description \n  ----------------------------|------------ \n  :auto-attach                | Whether to auto-attach to related targets.\n  :wait-for-debugger-on-start | Whether to pause new targets when attaching to them. Use `Runtime.runIfWaitingForDebugger`\nto run paused targets.\n  :flatten                    | Enables \"flat\" access to the session via specifying sessionId attribute in the commands.\nWe plan to make this the default, deprecate non-flattened mode,\nand eventually retire it. See crbug.com/991325. (optional)\n  :filter                     | Only targets matching filter will be attached. (optional)"
  ([]
   (set-auto-attach
    (c/get-current-connection)
    {}))
  ([{:as params,
-    :keys [auto-attach wait-for-debugger-on-start flatten]}]
+    :keys [auto-attach wait-for-debugger-on-start flatten filter]}]
   (set-auto-attach
    (c/get-current-connection)
    params))
  ([connection
    {:as params,
-    :keys [auto-attach wait-for-debugger-on-start flatten]}]
+    :keys [auto-attach wait-for-debugger-on-start flatten filter]}]
   (cmd/command
    connection
    "Target"
@@ -688,7 +749,8 @@
    params
    {:auto-attach "autoAttach",
     :wait-for-debugger-on-start "waitForDebuggerOnStart",
-    :flatten "flatten"})))
+    :flatten "flatten",
+    :filter "filter"})))
 
 (s/fdef
  set-auto-attach
@@ -704,7 +766,8 @@
     [::auto-attach
      ::wait-for-debugger-on-start]
     :opt-un
-    [::flatten]))
+    [::flatten
+     ::filter]))
   :connection-and-params
   (s/cat
    :connection
@@ -716,30 +779,32 @@
     [::auto-attach
      ::wait-for-debugger-on-start]
     :opt-un
-    [::flatten])))
+    [::flatten
+     ::filter])))
  :ret
  (s/keys))
 
 (defn
  auto-attach-related
- "Adds the specified target to the list of targets that will be monitored for any related target\ncreation (such as child frames, child workers and new versions of service worker) and reported\nthrough `attachedToTarget`. The specified target is also auto-attached.\nThis cancels the effect of any previous `setAutoAttach` and is also cancelled by subsequent\n`setAutoAttach`. Only available at the Browser target.\n\nParameters map keys:\n\n\n  Key                         | Description \n  ----------------------------|------------ \n  :target-id                  | null\n  :wait-for-debugger-on-start | Whether to pause new targets when attaching to them. Use `Runtime.runIfWaitingForDebugger`\nto run paused targets."
+ "Adds the specified target to the list of targets that will be monitored for any related target\ncreation (such as child frames, child workers and new versions of service worker) and reported\nthrough `attachedToTarget`. The specified target is also auto-attached.\nThis cancels the effect of any previous `setAutoAttach` and is also cancelled by subsequent\n`setAutoAttach`. Only available at the Browser target.\n\nParameters map keys:\n\n\n  Key                         | Description \n  ----------------------------|------------ \n  :target-id                  | null\n  :wait-for-debugger-on-start | Whether to pause new targets when attaching to them. Use `Runtime.runIfWaitingForDebugger`\nto run paused targets.\n  :filter                     | Only targets matching filter will be attached. (optional)"
  ([]
   (auto-attach-related
    (c/get-current-connection)
    {}))
- ([{:as params, :keys [target-id wait-for-debugger-on-start]}]
+ ([{:as params, :keys [target-id wait-for-debugger-on-start filter]}]
   (auto-attach-related
    (c/get-current-connection)
    params))
  ([connection
-   {:as params, :keys [target-id wait-for-debugger-on-start]}]
+   {:as params, :keys [target-id wait-for-debugger-on-start filter]}]
   (cmd/command
    connection
    "Target"
    "autoAttachRelated"
    params
    {:target-id "targetId",
-    :wait-for-debugger-on-start "waitForDebuggerOnStart"})))
+    :wait-for-debugger-on-start "waitForDebuggerOnStart",
+    :filter "filter"})))
 
 (s/fdef
  auto-attach-related
@@ -753,7 +818,9 @@
    (s/keys
     :req-un
     [::target-id
-     ::wait-for-debugger-on-start]))
+     ::wait-for-debugger-on-start]
+    :opt-un
+    [::filter]))
   :connection-and-params
   (s/cat
    :connection
@@ -763,28 +830,30 @@
    (s/keys
     :req-un
     [::target-id
-     ::wait-for-debugger-on-start])))
+     ::wait-for-debugger-on-start]
+    :opt-un
+    [::filter])))
  :ret
  (s/keys))
 
 (defn
  set-discover-targets
- "Controls whether to discover available targets and notify via\n`targetCreated/targetInfoChanged/targetDestroyed` events.\n\nParameters map keys:\n\n\n  Key       | Description \n  ----------|------------ \n  :discover | Whether to discover available targets."
+ "Controls whether to discover available targets and notify via\n`targetCreated/targetInfoChanged/targetDestroyed` events.\n\nParameters map keys:\n\n\n  Key       | Description \n  ----------|------------ \n  :discover | Whether to discover available targets.\n  :filter   | Only targets matching filter will be attached. If `discover` is false,\n`filter` must be omitted or empty. (optional)"
  ([]
   (set-discover-targets
    (c/get-current-connection)
    {}))
- ([{:as params, :keys [discover]}]
+ ([{:as params, :keys [discover filter]}]
   (set-discover-targets
    (c/get-current-connection)
    params))
- ([connection {:as params, :keys [discover]}]
+ ([connection {:as params, :keys [discover filter]}]
   (cmd/command
    connection
    "Target"
    "setDiscoverTargets"
    params
-   {:discover "discover"})))
+   {:discover "discover", :filter "filter"})))
 
 (s/fdef
  set-discover-targets
@@ -797,7 +866,9 @@
    :params
    (s/keys
     :req-un
-    [::discover]))
+    [::discover]
+    :opt-un
+    [::filter]))
   :connection-and-params
   (s/cat
    :connection
@@ -806,7 +877,9 @@
    :params
    (s/keys
     :req-un
-    [::discover])))
+    [::discover]
+    :opt-un
+    [::filter])))
  :ret
  (s/keys))
 
@@ -852,3 +925,97 @@
     [::locations])))
  :ret
  (s/keys))
+
+(defn
+ get-dev-tools-target
+ "Gets the targetId of the DevTools page target opened for the given target\n(if any).\n\nParameters map keys:\n\n\n  Key        | Description \n  -----------|------------ \n  :target-id | Page or tab target ID.\n\nReturn map keys:\n\n\n  Key        | Description \n  -----------|------------ \n  :target-id | The targetId of DevTools page target if exists. (optional)"
+ ([]
+  (get-dev-tools-target
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys [target-id]}]
+  (get-dev-tools-target
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys [target-id]}]
+  (cmd/command
+   connection
+   "Target"
+   "getDevToolsTarget"
+   params
+   {:target-id "targetId"})))
+
+(s/fdef
+ get-dev-tools-target
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat
+   :params
+   (s/keys
+    :req-un
+    [::target-id]))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys
+    :req-un
+    [::target-id])))
+ :ret
+ (s/keys
+  :opt-un
+  [::target-id]))
+
+(defn
+ open-dev-tools
+ "Opens a DevTools window for the target.\n\nParameters map keys:\n\n\n  Key        | Description \n  -----------|------------ \n  :target-id | This can be the page or tab target ID.\n  :panel-id  | The id of the panel we want DevTools to open initially. Currently\nsupported panels are elements, console, network, sources, resources\nand performance. (optional)\n\nReturn map keys:\n\n\n  Key        | Description \n  -----------|------------ \n  :target-id | The targetId of DevTools page target."
+ ([]
+  (open-dev-tools
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys [target-id panel-id]}]
+  (open-dev-tools
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys [target-id panel-id]}]
+  (cmd/command
+   connection
+   "Target"
+   "openDevTools"
+   params
+   {:target-id "targetId", :panel-id "panelId"})))
+
+(s/fdef
+ open-dev-tools
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat
+   :params
+   (s/keys
+    :req-un
+    [::target-id]
+    :opt-un
+    [::panel-id]))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys
+    :req-un
+    [::target-id]
+    :opt-un
+    [::panel-id])))
+ :ret
+ (s/keys
+  :req-un
+  [::target-id]))

@@ -39,29 +39,46 @@
 
 (s/def
  ::permissions-policy-feature
- #{"ch-ua-full-version-list" "ch-ua-wow64" "ch-viewport-height"
-   "gamepad" "sync-xhr" "ch-ua-full" "run-ad-auction"
-   "screen-wake-lock" "ch-prefers-color-scheme" "xr-spatial-tracking"
-   "serial" "trust-token-redemption" "cross-origin-isolated"
-   "frobulate" "shared-autofill" "display-capture" "autoplay"
-   "document-domain" "direct-sockets" "clipboard-read"
-   "execution-while-not-rendered" "vertical-scroll" "camera"
-   "magnetometer" "web-share" "ch-ua-model" "geolocation" "gyroscope"
-   "keyboard-map" "clipboard-write" "ch-ua-reduced"
-   "ch-ua-full-version" "ch-partitioned-cookies" "ch-downlink" "usb"
-   "ch-ua-platform-version" "ch-ua-mobile" "attribution-reporting"
-   "ch-ua-platform" "interest-cohort" "ch-viewport-width" "hid"
-   "ambient-light-sensor" "ch-ua-bitness" "window-placement"
-   "join-ad-interest-group" "microphone" "fullscreen" "browsing-topics"
-   "midi" "ch-ect" "execution-while-out-of-viewport" "otp-credentials"
-   "storage-access-api" "ch-device-memory" "ch-ua-arch" "ch-rtt"
-   "picture-in-picture" "idle-detection" "publickey-credentials-get"
+ #{"ch-ua-full-version-list" "usb-unrestricted"
+   "media-playback-while-not-visible" "ch-ua-wow64"
+   "ch-viewport-height" "gamepad" "language-model"
+   "captured-surface-control" "loopback-network" "autofill"
+   "speaker-selection" "sync-xhr" "ch-save-data" "run-ad-auction"
+   "device-attributes" "controlled-frame" "screen-wake-lock" "rewriter"
+   "ch-prefers-color-scheme" "tools" "aria-notify"
+   "xr-spatial-tracking" "serial" "cross-origin-isolated" "frobulate"
+   "smart-card" "display-capture" "ch-prefers-reduced-motion"
+   "autoplay" "document-domain" "storage-access" "direct-sockets"
+   "clipboard-read" "direct-sockets-private"
+   "execution-while-not-rendered" "deferred-fetch" "unload"
+   "deferred-fetch-minimal" "vertical-scroll" "web-app-installation"
+   "local-network-access" "language-detector" "camera" "magnetometer"
+   "private-state-token-redemption" "digital-credentials-get"
+   "web-share" "ch-ua-model" "all-screens-capture" "geolocation"
+   "gyroscope" "sub-apps" "keyboard-map" "clipboard-write" "translator"
+   "private-aggregation" "web-printing" "digital-credentials-create"
+   "ch-ua-full-version" "ch-downlink" "identity-credentials-get" "usb"
+   "ch-ua-platform-version" "ch-ua-mobile" "local-fonts"
+   "compute-pressure" "ch-ua-high-entropy-values"
+   "attribution-reporting" "summarizer" "writer" "ch-ua-platform"
+   "interest-cohort" "ch-viewport-width" "hid"
+   "private-state-token-issuance" "ambient-light-sensor"
+   "ch-ua-bitness" "local-network" "join-ad-interest-group"
+   "microphone" "fullscreen" "browsing-topics" "midi"
+   "ch-ua-form-factors" "ch-ect" "execution-while-out-of-viewport"
+   "otp-credentials" "ch-device-memory" "publickey-credentials-create"
+   "ch-ua-arch" "manual-text" "shared-storage" "ch-rtt"
+   "direct-sockets-multicast" "record-ad-auction-events"
+   "picture-in-picture" "idle-detection"
+   "ch-prefers-reduced-transparency" "publickey-credentials-get"
    "ch-ua" "encrypted-media" "focus-without-user-activation" "ch-dpr"
-   "accelerometer" "payment" "ch-width"})
+   "window-management" "accelerometer" "payment" "ch-width"
+   "on-device-speech-recognition" "shared-storage-select-url"
+   "bluetooth"})
 
 (s/def
  ::permissions-policy-block-reason
- #{"Header" "InFencedFrameTree" "IframeAttribute"})
+ #{"Header" "InFencedFrameTree" "InIsolatedApp" "IframeAttribute"})
 
 (s/def
  ::permissions-policy-block-locator
@@ -123,6 +140,12 @@
    ::tokens-with-status]))
 
 (s/def
+ ::security-origin-details
+ (s/keys
+  :req-un
+  [::is-localhost]))
+
+(s/def
  ::frame
  (s/keys
   :req-un
@@ -139,6 +162,7 @@
   [::parent-id
    ::name
    ::url-fragment
+   ::security-origin-details
    ::unreachable-url
    ::ad-frame-status]))
 
@@ -258,16 +282,16 @@
    ::scale]))
 
 (s/def
- ::font-families
+ :user/font-families
  (s/keys
   :opt-un
-  [::standard
-   ::fixed
-   ::serif
-   ::sans-serif
-   ::cursive
-   ::fantasy
-   ::pictograph]))
+  [:user/standard
+   :user/fixed
+   :user/serif
+   :user/sans-serif
+   :user/cursive
+   :user/fantasy
+   :user/math]))
 
 (s/def
  :user/script-font-families
@@ -279,9 +303,9 @@
 
 (s/def
  :user/client-navigation-reason
- #{"scriptInitiated" "metaTagRefresh" "anchorClick" "reload"
-   "formSubmissionPost" "pageBlockInterstitial" "formSubmissionGet"
-   "httpHeaderRefresh"})
+ #{"scriptInitiated" "metaTagRefresh" "initialFrameNavigation"
+   "anchorClick" "reload" "other" "formSubmissionPost"
+   "pageBlockInterstitial" "formSubmissionGet" "httpHeaderRefresh"})
 
 (s/def
  :user/client-navigation-disposition
@@ -308,69 +332,167 @@
  (s/keys :req-un [:user/url] :opt-un [:user/eager]))
 
 (s/def
+ :user/file-filter
+ (s/keys :opt-un [:user/name :user/accepts]))
+
+(s/def
+ :user/file-handler
+ (s/keys
+  :req-un
+  [:user/action :user/name :user/launch-type]
+  :opt-un
+  [:user/icons :user/accepts]))
+
+(s/def
+ :user/image-resource
+ (s/keys
+  :req-un
+  [:user/url]
+  :opt-un
+  [:user/sizes :user/type]))
+
+(s/def
+ :user/launch-handler
+ (s/keys :req-un [:user/client-mode]))
+
+(s/def
+ :user/protocol-handler
+ (s/keys :req-un [:user/protocol :user/url]))
+
+(s/def
+ :user/related-application
+ (s/keys :req-un [:user/url] :opt-un [:user/id]))
+
+(s/def
+ :user/scope-extension
+ (s/keys
+  :req-un
+  [:user/origin :user/has-origin-wildcard]))
+
+(s/def
+ :user/screenshot
+ (s/keys
+  :req-un
+  [:user/image :user/form-factor]
+  :opt-un
+  [:user/label]))
+
+(s/def
+ :user/share-target
+ (s/keys
+  :req-un
+  [:user/action :user/method :user/enctype]
+  :opt-un
+  [:user/title :user/text :user/url :user/files]))
+
+(s/def
+ :user/shortcut
+ (s/keys :req-un [:user/name :user/url]))
+
+(s/def
+ :user/web-app-manifest
+ (s/keys
+  :opt-un
+  [:user/background-color
+   :user/description
+   :user/dir
+   :user/display
+   :user/display-overrides
+   :user/file-handlers
+   :user/icons
+   :user/id
+   :user/lang
+   :user/launch-handler
+   :user/name
+   :user/orientation
+   :user/prefer-related-applications
+   :user/protocol-handlers
+   :user/related-applications
+   :user/scope
+   :user/scope-extensions
+   :user/screenshots
+   :user/share-target
+   :user/short-name
+   :user/shortcuts
+   :user/start-url
+   :user/theme-color]))
+
+(s/def
  :user/navigation-type
  #{"Navigation" "BackForwardCacheRestore"})
 
 (s/def
  :user/back-forward-cache-not-restored-reason
- #{"UnloadHandlerExistsInMainFrame" "OutstandingNetworkRequestXHR"
-   "WebNfc" "HTTPStatusNotOK" "PictureInPicture"
-   "RequestedNotificationsPermission" "TimeoutPuttingInCache"
-   "JavaScriptExecution" "InjectedStyleSheet"
+ #{"SharedWorkerWithNoActiveClient" "UnloadHandlerExistsInMainFrame"
+   "OutstandingNetworkRequestXHR" "WebNfc" "HTTPStatusNotOK"
+   "PictureInPicture" "IndexedDBEvent" "SmartCard"
+   "TimeoutPuttingInCache" "JavaScriptExecution"
+   "WebViewMessageListenerInjected" "InjectedStyleSheet"
    "EmbedderPermissionRequestManager"
    "EmbedderSafeBrowsingThreatDetails" "IgnoreEventAndEvict" "Timeout"
    "RequestedMIDIPermission" "NoResponseHead" "CacheControlNoStore"
-   "BroadcastChannel" "SchemeNotHTTPOrHTTPS" "SubframeIsNavigating"
-   "WasGrantedMediaAccess" "WebSocket" "ContentFileSystemAccess"
-   "IndexedDBConnection" "KeyboardLock" "CacheLimit" "ContainsPlugins"
-   "ContentSerial" "WebLocks" "EmbedderExtensionMessagingForOpenPort"
-   "ContentSecurityHandler" "AppBanner" "ContentFileChooser"
+   "WebBluetooth" "BroadcastChannel" "SchemeNotHTTPOrHTTPS"
+   "SubframeIsNavigating" "WasGrantedMediaAccess" "WebSocket"
+   "ContentFileSystemAccess" "CookieFlushed" "KeyboardLock"
+   "CacheLimit" "ContainsPlugins" "ContentSerial" "WebLocks"
+   "EmbedderExtensionMessagingForOpenPort" "ContentSecurityHandler"
+   "CookieDisabled" "AppBanner" "ContentFileChooser"
    "OutstandingNetworkRequestOthers" "BrowsingInstanceNotSwapped"
    "EmbedderExtensionMessaging" "UserAgentOverrideDiffers"
    "EmbedderSafeBrowsingTriggeredPopupBlocker"
    "RequestedStorageAccessGrant" "SchedulerTrackedFeatureUsed"
    "ContentMediaSessionService" "RequestedBackgroundWorkPermission"
    "ContentMediaDevicesDispatcherHost" "NotPrimaryMainFrame"
-   "BackForwardCacheDisabled" "PaymentManager"
+   "ContentDiscarded" "BackForwardCacheDisabled"
+   "WebViewDocumentStartJavascriptChanged" "PaymentManager"
    "MainResourceHasCacheControlNoStore" "WebShare"
    "NetworkRequestTimeout" "EmbedderAppBannerManager" "ErrorDocument"
    "NetworkExceedsBufferLimit" "BackForwardCacheDisabledByCommandLine"
    "Unknown" "OutstandingNetworkRequestFetch"
    "EmbedderDomDistillerSelfDeletingRequestDelegate"
-   "EmbedderOomInterventionTabHelper" "ContentMediaSession"
+   "EmbedderOomInterventionTabHelper" "BroadcastChannelOnMessage"
+   "CacheLimitPrunedOnModerateMemoryPressure"
    "OutstandingNetworkRequestDirectSocket" "ServiceWorkerClaim"
+   "CacheLimitPrunedOnCriticalMemoryPressure"
    "RequestedAudioCapturePermission" "ConflictingBrowsingInstance"
+   "CacheControlNoStoreDeviceBoundSessionTerminated"
    "SubresourceHasCacheControlNoCache"
    "EmbedderDomDistillerViewerSource" "UnloadHandlerExistsInSubFrame"
-   "WebDatabase" "RenderFrameHostReused_SameSite"
-   "OptInUnloadHeaderNotPresent"
-   "RequestedBackForwardCacheBlockedSensors" "SharedWorker"
-   "BackForwardCacheDisabledByLowMemory" "ContentWebBluetooth"
-   "RelatedActiveContentsExist" "CacheControlNoStoreCookieModified"
-   "ContentWebUSB" "Printing" "Loading" "Dummy" "IdleManager" "WebXR"
-   "ContentScreenReader" "DisableForRenderFrameHostCalled"
-   "ServiceWorkerPostMessage" "GrantedMediaStreamAccess"
-   "EmbedderOfflinePage" "ServiceWorkerUnregistration" "Portal"
-   "WebHID" "SpeechSynthesis" "WebTransport"
+   "HTTPAuthRequired" "WebDatabase" "RenderFrameHostReused_SameSite"
+   "LiveMediaStreamTrack" "RequestedBackForwardCacheBlockedSensors"
+   "SharedWorker" "BackForwardCacheDisabledByLowMemory"
+   "ContentWebBluetooth" "RelatedActiveContentsExist"
+   "CacheControlNoStoreCookieModified" "WebSocketUsedWithCCNS"
+   "ContentWebUSB" "Printing" "WebLocksContention"
+   "ForwardCacheDisabled" "ParserAborted" "Loading" "Dummy"
+   "IdleManager" "WebXR" "ContentScreenReader"
+   "WebViewJavaScriptObjectChanged" "DisableForRenderFrameHostCalled"
+   "ServiceWorkerPostMessage" "WebViewSafeBrowsingAllowlistChanged"
+   "EmbedderExtensionFrame" "EmbedderOfflinePage" "WebRTCUsedWithCCNS"
+   "WebViewSettingsChanged" "ServiceWorkerUnregistration"
+   "FencedFramesEmbedder" "WebTransportUsedWithCCNS" "UnloadHandler"
+   "KeepaliveRequest" "WebHID" "SpeechSynthesis" "WebTransport"
    "ServiceWorkerVersionActivation"
    "EmbedderExtensionSentMessageToCachedFrame"
    "NetworkRequestRedirected" "CacheFlushed" "RendererProcessCrashed"
-   "DomainNotAllowed" "RenderFrameHostReused_CrossSite"
-   "EmbedderPopupBlockerTabHelper" "OutstandingIndexedDBTransaction"
+   "DomainNotAllowed" "RequestedByWebViewClient"
+   "RenderFrameHostReused_CrossSite" "EmbedderPopupBlockerTabHelper"
    "ActivationNavigationsDisallowedForBug1234857"
    "EmbedderChromePasswordManagerClientBindCredentialManager"
    "MainResourceHasCacheControlNoCache" "HaveInnerContents"
-   "NotMostRecentNavigationEntry" "WebRTC" "RendererProcessKilled"
-   "NavigationCancelledWhileRestoring" "SessionRestored"
-   "BackForwardCacheDisabledForPrerender"
+   "NotMostRecentNavigationEntry" "SharedWorkerMessage" "WebRTC"
+   "RendererProcessKilled" "NavigationCancelledWhileRestoring"
+   "SessionRestored" "BackForwardCacheDisabledForPrerender"
+   "PostMessageByWebViewClient"
    "EnteredBackForwardCacheBeforeServiceWorkerHostAdded"
    "NetworkRequestDatapipeDrainedAsBytesConsumer" "EmbedderModalDialog"
    "RequestedVideoCapturePermission" "WebOTPService"
    "CacheControlNoStoreHTTPOnlyCookieModified"
    "BackForwardCacheDisabledForDelegate" "HTTPMethodNotGET"
    "ForegroundCacheLimit" "ContentWebAuthenticationAPI"
-   "InjectedJavascript" "EmbedderExtensions" "DocumentLoaded"
-   "SpeechRecognizer" "DedicatedWorkerOrWorklet"
+   "InjectedJavascript" "EmbedderExtensions"
+   "JsNetworkRequestReceivedCacheControlNoStoreResource"
+   "DocumentLoaded" "SpeechRecognizer"
    "SubresourceHasCacheControlNoStore"})
 
 (s/def
@@ -378,12 +500,20 @@
  #{"SupportPending" "PageSupportNeeded" "Circumstantial"})
 
 (s/def
+ :user/back-forward-cache-blocking-details
+ (s/keys
+  :req-un
+  [:user/line-number :user/column-number]
+  :opt-un
+  [:user/url :user/function]))
+
+(s/def
  :user/back-forward-cache-not-restored-explanation
  (s/keys
   :req-un
   [:user/type :user/reason]
   :opt-un
-  [:user/context]))
+  [:user/context :user/details]))
 
 (s/def
  :user/back-forward-cache-not-restored-explanation-tree
@@ -437,17 +567,21 @@
 
 (defn
  add-script-to-evaluate-on-new-document
- "Evaluates given script in every frame upon creation (before loading frame's scripts).\n\nParameters map keys:\n\n\n  Key                       | Description \n  --------------------------|------------ \n  :source                   | null\n  :world-name               | If specified, creates an isolated world with the given name and evaluates given script in it.\nThis world name will be used as the ExecutionContextDescription::name when the corresponding\nevent is emitted. (optional)\n  :include-command-line-api | Specifies whether command line API should be available to the script, defaults\nto false. (optional)\n\nReturn map keys:\n\n\n  Key         | Description \n  ------------|------------ \n  :identifier | Identifier of the added script."
+ "Evaluates given script in every frame upon creation (before loading frame's scripts).\n\nParameters map keys:\n\n\n  Key                       | Description \n  --------------------------|------------ \n  :source                   | null\n  :world-name               | If specified, creates an isolated world with the given name and evaluates given script in it.\nThis world name will be used as the ExecutionContextDescription::name when the corresponding\nevent is emitted. (optional)\n  :include-command-line-api | Specifies whether command line API should be available to the script, defaults\nto false. (optional)\n  :run-immediately          | If true, runs the script immediately on existing execution contexts or worlds.\nDefault: false. (optional)\n\nReturn map keys:\n\n\n  Key         | Description \n  ------------|------------ \n  :identifier | Identifier of the added script."
  ([]
   (add-script-to-evaluate-on-new-document
    (c/get-current-connection)
    {}))
- ([{:as params, :keys [source world-name include-command-line-api]}]
+ ([{:as params,
+    :keys
+    [source world-name include-command-line-api run-immediately]}]
   (add-script-to-evaluate-on-new-document
    (c/get-current-connection)
    params))
  ([connection
-   {:as params, :keys [source world-name include-command-line-api]}]
+   {:as params,
+    :keys
+    [source world-name include-command-line-api run-immediately]}]
   (cmd/command
    connection
    "Page"
@@ -455,7 +589,8 @@
    params
    {:source "source",
     :world-name "worldName",
-    :include-command-line-api "includeCommandLineAPI"})))
+    :include-command-line-api "includeCommandLineAPI",
+    :run-immediately "runImmediately"})))
 
 (s/fdef
  add-script-to-evaluate-on-new-document
@@ -471,7 +606,8 @@
     [::source]
     :opt-un
     [::world-name
-     ::include-command-line-api]))
+     ::include-command-line-api
+     ::run-immediately]))
   :connection-and-params
   (s/cat
    :connection
@@ -483,7 +619,8 @@
     [::source]
     :opt-un
     [::world-name
-     ::include-command-line-api])))
+     ::include-command-line-api
+     ::run-immediately])))
  :ret
  (s/keys
   :req-un
@@ -528,19 +665,31 @@
 
 (defn
  capture-screenshot
- "Capture page screenshot.\n\nParameters map keys:\n\n\n  Key                      | Description \n  -------------------------|------------ \n  :format                  | Image compression format (defaults to png). (optional)\n  :quality                 | Compression quality from range [0..100] (jpeg only). (optional)\n  :clip                    | Capture the screenshot of a given region only. (optional)\n  :from-surface            | Capture the screenshot from the surface, rather than the view. Defaults to true. (optional)\n  :capture-beyond-viewport | Capture the screenshot beyond the viewport. Defaults to false. (optional)\n\nReturn map keys:\n\n\n  Key   | Description \n  ------|------------ \n  :data | Base64-encoded image data. (Encoded as a base64 string when passed over JSON)"
+ "Capture page screenshot.\n\nParameters map keys:\n\n\n  Key                      | Description \n  -------------------------|------------ \n  :format                  | Image compression format (defaults to png). (optional)\n  :quality                 | Compression quality from range [0..100] (jpeg only). (optional)\n  :clip                    | Capture the screenshot of a given region only. (optional)\n  :from-surface            | Capture the screenshot from the surface, rather than the view. Defaults to true. (optional)\n  :capture-beyond-viewport | Capture the screenshot beyond the viewport. Defaults to false. (optional)\n  :optimize-for-speed      | Optimize image encoding for speed, not for resulting size (defaults to false) (optional)\n\nReturn map keys:\n\n\n  Key   | Description \n  ------|------------ \n  :data | Base64-encoded image data. (Encoded as a base64 string when passed over JSON)"
  ([]
   (capture-screenshot
    (c/get-current-connection)
    {}))
  ([{:as params,
-    :keys [format quality clip from-surface capture-beyond-viewport]}]
+    :keys
+    [format
+     quality
+     clip
+     from-surface
+     capture-beyond-viewport
+     optimize-for-speed]}]
   (capture-screenshot
    (c/get-current-connection)
    params))
  ([connection
    {:as params,
-    :keys [format quality clip from-surface capture-beyond-viewport]}]
+    :keys
+    [format
+     quality
+     clip
+     from-surface
+     capture-beyond-viewport
+     optimize-for-speed]}]
   (cmd/command
    connection
    "Page"
@@ -550,7 +699,8 @@
     :quality "quality",
     :clip "clip",
     :from-surface "fromSurface",
-    :capture-beyond-viewport "captureBeyondViewport"})))
+    :capture-beyond-viewport "captureBeyondViewport",
+    :optimize-for-speed "optimizeForSpeed"})))
 
 (s/fdef
  capture-screenshot
@@ -567,7 +717,8 @@
      ::quality
      ::clip
      ::from-surface
-     ::capture-beyond-viewport]))
+     ::capture-beyond-viewport
+     ::optimize-for-speed]))
   :connection-and-params
   (s/cat
    :connection
@@ -580,7 +731,8 @@
      ::quality
      ::clip
      ::from-surface
-     ::capture-beyond-viewport])))
+     ::capture-beyond-viewport
+     ::optimize-for-speed])))
  :ret
  (s/keys
   :req-un
@@ -880,22 +1032,22 @@
 
 (defn
  enable
- "Enables page domain notifications."
+ "Enables page domain notifications.\n\nParameters map keys:\n\n\n  Key                               | Description \n  ----------------------------------|------------ \n  :enable-file-chooser-opened-event | If true, the `Page.fileChooserOpened` event will be emitted regardless of the state set by\n`Page.setInterceptFileChooserDialog` command (default: false). (optional)"
  ([]
   (enable
    (c/get-current-connection)
    {}))
- ([{:as params, :keys []}]
+ ([{:as params, :keys [enable-file-chooser-opened-event]}]
   (enable
    (c/get-current-connection)
    params))
- ([connection {:as params, :keys []}]
+ ([connection {:as params, :keys [enable-file-chooser-opened-event]}]
   (cmd/command
    connection
    "Page"
    "enable"
    params
-   {})))
+   {:enable-file-chooser-opened-event "enableFileChooserOpenedEvent"})))
 
 (s/fdef
  enable
@@ -904,35 +1056,41 @@
   :no-args
   (s/cat)
   :just-params
-  (s/cat :params (s/keys))
+  (s/cat
+   :params
+   (s/keys
+    :opt-un
+    [::enable-file-chooser-opened-event]))
   :connection-and-params
   (s/cat
    :connection
    (s/?
     c/connection?)
    :params
-   (s/keys)))
+   (s/keys
+    :opt-un
+    [::enable-file-chooser-opened-event])))
  :ret
  (s/keys))
 
 (defn
  get-app-manifest
- "\n\nReturn map keys:\n\n\n  Key     | Description \n  --------|------------ \n  :url    | Manifest location.\n  :errors | null\n  :data   | Manifest content. (optional)\n  :parsed | Parsed manifest properties (optional)"
+ "Gets the processed manifest for this current document.\n  This API always waits for the manifest to be loaded.\n  If manifestId is provided, and it does not match the manifest of the\n    current document, this API errors out.\n  If there is not a loaded page, this API errors out immediately.\n\nParameters map keys:\n\n\n  Key          | Description \n  -------------|------------ \n  :manifest-id | null (optional)\n\nReturn map keys:\n\n\n  Key       | Description \n  ----------|------------ \n  :url      | Manifest location.\n  :errors   | null\n  :data     | Manifest content. (optional)\n  :parsed   | Parsed manifest properties. Deprecated, use manifest instead. (optional)\n  :manifest | null"
  ([]
   (get-app-manifest
    (c/get-current-connection)
    {}))
- ([{:as params, :keys []}]
+ ([{:as params, :keys [manifest-id]}]
   (get-app-manifest
    (c/get-current-connection)
    params))
- ([connection {:as params, :keys []}]
+ ([connection {:as params, :keys [manifest-id]}]
   (cmd/command
    connection
    "Page"
    "getAppManifest"
    params
-   {})))
+   {:manifest-id "manifestId"})))
 
 (s/fdef
  get-app-manifest
@@ -941,19 +1099,26 @@
   :no-args
   (s/cat)
   :just-params
-  (s/cat :params (s/keys))
+  (s/cat
+   :params
+   (s/keys
+    :opt-un
+    [::manifest-id]))
   :connection-and-params
   (s/cat
    :connection
    (s/?
     c/connection?)
    :params
-   (s/keys)))
+   (s/keys
+    :opt-un
+    [::manifest-id])))
  :ret
  (s/keys
   :req-un
   [::url
-   ::errors]
+   ::errors
+   ::manifest]
   :opt-un
   [::data
    ::parsed]))
@@ -999,7 +1164,7 @@
 
 (defn
  get-manifest-icons
- "\n\nReturn map keys:\n\n\n  Key           | Description \n  --------------|------------ \n  :primary-icon | null (optional)"
+ "Deprecated because it's not guaranteed that the returned icon is in fact the one used for PWA installation.\n\nReturn map keys:\n\n\n  Key           | Description \n  --------------|------------ \n  :primary-icon | null (optional)"
  ([]
   (get-manifest-icons
    (c/get-current-connection)
@@ -1077,43 +1242,49 @@
    ::recommended-id]))
 
 (defn
- get-cookies
- "Returns all browser cookies. Depending on the backend support, will return detailed cookie\ninformation in the `cookies` field.\n\nReturn map keys:\n\n\n  Key      | Description \n  ---------|------------ \n  :cookies | Array of cookie objects."
+ get-ad-script-ancestry
+ "\n\nParameters map keys:\n\n\n  Key       | Description \n  ----------|------------ \n  :frame-id | null\n\nReturn map keys:\n\n\n  Key                 | Description \n  --------------------|------------ \n  :ad-script-ancestry | The ancestry chain of ad script identifiers leading to this frame's\ncreation, along with the root script's filterlist rule. The ancestry\nchain is ordered from the most immediate script (in the frame creation\nstack) to more distant ancestors (that created the immediately preceding\nscript). Only sent if frame is labelled as an ad and ids are available. (optional)"
  ([]
-  (get-cookies
+  (get-ad-script-ancestry
    (c/get-current-connection)
    {}))
- ([{:as params, :keys []}]
-  (get-cookies
+ ([{:as params, :keys [frame-id]}]
+  (get-ad-script-ancestry
    (c/get-current-connection)
    params))
- ([connection {:as params, :keys []}]
+ ([connection {:as params, :keys [frame-id]}]
   (cmd/command
    connection
    "Page"
-   "getCookies"
+   "getAdScriptAncestry"
    params
-   {})))
+   {:frame-id "frameId"})))
 
 (s/fdef
- get-cookies
+ get-ad-script-ancestry
  :args
  (s/or
   :no-args
   (s/cat)
   :just-params
-  (s/cat :params (s/keys))
+  (s/cat
+   :params
+   (s/keys
+    :req-un
+    [::frame-id]))
   :connection-and-params
   (s/cat
    :connection
    (s/?
     c/connection?)
    :params
-   (s/keys)))
+   (s/keys
+    :req-un
+    [::frame-id])))
  :ret
  (s/keys
-  :req-un
-  [::cookies]))
+  :opt-un
+  [::ad-script-ancestry]))
 
 (defn
  get-frame-tree
@@ -1156,7 +1327,7 @@
 
 (defn
  get-layout-metrics
- "Returns metrics relating to the layouting of the page, such as viewport bounds/scale.\n\nReturn map keys:\n\n\n  Key                  | Description \n  ---------------------|------------ \n  :layout-viewport     | Deprecated metrics relating to the layout viewport. Can be in DP or in CSS pixels depending on the `enable-use-zoom-for-dsf` flag. Use `cssLayoutViewport` instead.\n  :visual-viewport     | Deprecated metrics relating to the visual viewport. Can be in DP or in CSS pixels depending on the `enable-use-zoom-for-dsf` flag. Use `cssVisualViewport` instead.\n  :content-size        | Deprecated size of scrollable area. Can be in DP or in CSS pixels depending on the `enable-use-zoom-for-dsf` flag. Use `cssContentSize` instead.\n  :css-layout-viewport | Metrics relating to the layout viewport in CSS pixels.\n  :css-visual-viewport | Metrics relating to the visual viewport in CSS pixels.\n  :css-content-size    | Size of scrollable area in CSS pixels."
+ "Returns metrics relating to the layouting of the page, such as viewport bounds/scale.\n\nReturn map keys:\n\n\n  Key                  | Description \n  ---------------------|------------ \n  :layout-viewport     | Deprecated metrics relating to the layout viewport. Is in device pixels. Use `cssLayoutViewport` instead.\n  :visual-viewport     | Deprecated metrics relating to the visual viewport. Is in device pixels. Use `cssVisualViewport` instead.\n  :content-size        | Deprecated size of scrollable area. Is in DP. Use `cssContentSize` instead.\n  :css-layout-viewport | Metrics relating to the layout viewport in CSS pixels.\n  :css-visual-viewport | Metrics relating to the visual viewport in CSS pixels.\n  :css-content-size    | Size of scrollable area in CSS pixels."
  ([]
   (get-layout-metrics
    (c/get-current-connection)
@@ -1411,7 +1582,7 @@
 
 (defn
  navigate
- "Navigates current page to the given URL.\n\nParameters map keys:\n\n\n  Key              | Description \n  -----------------|------------ \n  :url             | URL to navigate the page to.\n  :referrer        | Referrer URL. (optional)\n  :transition-type | Intended transition type. (optional)\n  :frame-id        | Frame id to navigate, if not specified navigates the top frame. (optional)\n  :referrer-policy | Referrer-policy used for the navigation. (optional)\n\nReturn map keys:\n\n\n  Key         | Description \n  ------------|------------ \n  :frame-id   | Frame id that has navigated (or failed to navigate)\n  :loader-id  | Loader identifier. (optional)\n  :error-text | User friendly error message, present if and only if navigation has failed. (optional)"
+ "Navigates current page to the given URL.\n\nParameters map keys:\n\n\n  Key              | Description \n  -----------------|------------ \n  :url             | URL to navigate the page to.\n  :referrer        | Referrer URL. (optional)\n  :transition-type | Intended transition type. (optional)\n  :frame-id        | Frame id to navigate, if not specified navigates the top frame. (optional)\n  :referrer-policy | Referrer-policy used for the navigation. (optional)\n\nReturn map keys:\n\n\n  Key          | Description \n  -------------|------------ \n  :frame-id    | Frame id that has navigated (or failed to navigate)\n  :loader-id   | Loader identifier. This is omitted in case of same-document navigation,\nas the previously committed loaderId would not change. (optional)\n  :error-text  | User friendly error message, present if and only if navigation has failed. (optional)\n  :is-download | Whether the navigation resulted in a download. (optional)"
  ([]
   (navigate
    (c/get-current-connection)
@@ -1472,7 +1643,8 @@
   [::frame-id]
   :opt-un
   [::loader-id
-   ::error-text]))
+   ::error-text
+   ::is-download]))
 
 (defn
  navigate-to-history-entry
@@ -1519,7 +1691,7 @@
 
 (defn
  print-to-pdf
- "Print page as PDF.\n\nParameters map keys:\n\n\n  Key                         | Description \n  ----------------------------|------------ \n  :landscape                  | Paper orientation. Defaults to false. (optional)\n  :display-header-footer      | Display header and footer. Defaults to false. (optional)\n  :print-background           | Print background graphics. Defaults to false. (optional)\n  :scale                      | Scale of the webpage rendering. Defaults to 1. (optional)\n  :paper-width                | Paper width in inches. Defaults to 8.5 inches. (optional)\n  :paper-height               | Paper height in inches. Defaults to 11 inches. (optional)\n  :margin-top                 | Top margin in inches. Defaults to 1cm (~0.4 inches). (optional)\n  :margin-bottom              | Bottom margin in inches. Defaults to 1cm (~0.4 inches). (optional)\n  :margin-left                | Left margin in inches. Defaults to 1cm (~0.4 inches). (optional)\n  :margin-right               | Right margin in inches. Defaults to 1cm (~0.4 inches). (optional)\n  :page-ranges                | Paper ranges to print, e.g., '1-5, 8, 11-13'. Defaults to the empty string, which means\nprint all pages. (optional)\n  :ignore-invalid-page-ranges | Whether to silently ignore invalid but successfully parsed page ranges, such as '3-2'.\nDefaults to false. (optional)\n  :header-template            | HTML template for the print header. Should be valid HTML markup with following\nclasses used to inject printing values into them:\n- `date`: formatted print date\n- `title`: document title\n- `url`: document location\n- `pageNumber`: current page number\n- `totalPages`: total pages in the document\n\nFor example, `<span class=title></span>` would generate span containing the title. (optional)\n  :footer-template            | HTML template for the print footer. Should use the same format as the `headerTemplate`. (optional)\n  :prefer-css-page-size       | Whether or not to prefer page size as defined by css. Defaults to false,\nin which case the content will be scaled to fit the paper size. (optional)\n  :transfer-mode              | return as stream (optional)\n\nReturn map keys:\n\n\n  Key     | Description \n  --------|------------ \n  :data   | Base64-encoded pdf data. Empty if |returnAsStream| is specified. (Encoded as a base64 string when passed over JSON)\n  :stream | A handle of the stream that holds resulting PDF data. (optional)"
+ "Print page as PDF.\n\nParameters map keys:\n\n\n  Key                        | Description \n  ---------------------------|------------ \n  :landscape                 | Paper orientation. Defaults to false. (optional)\n  :display-header-footer     | Display header and footer. Defaults to false. (optional)\n  :print-background          | Print background graphics. Defaults to false. (optional)\n  :scale                     | Scale of the webpage rendering. Defaults to 1. (optional)\n  :paper-width               | Paper width in inches. Defaults to 8.5 inches. (optional)\n  :paper-height              | Paper height in inches. Defaults to 11 inches. (optional)\n  :margin-top                | Top margin in inches. Defaults to 1cm (~0.4 inches). (optional)\n  :margin-bottom             | Bottom margin in inches. Defaults to 1cm (~0.4 inches). (optional)\n  :margin-left               | Left margin in inches. Defaults to 1cm (~0.4 inches). (optional)\n  :margin-right              | Right margin in inches. Defaults to 1cm (~0.4 inches). (optional)\n  :page-ranges               | Paper ranges to print, one based, e.g., '1-5, 8, 11-13'. Pages are\nprinted in the document order, not in the order specified, and no\nmore than once.\nDefaults to empty string, which implies the entire document is printed.\nThe page numbers are quietly capped to actual page count of the\ndocument, and ranges beyond the end of the document are ignored.\nIf this results in no pages to print, an error is reported.\nIt is an error to specify a range with start greater than end. (optional)\n  :header-template           | HTML template for the print header. Should be valid HTML markup with following\nclasses used to inject printing values into them:\n- `date`: formatted print date\n- `title`: document title\n- `url`: document location\n- `pageNumber`: current page number\n- `totalPages`: total pages in the document\n\nFor example, `<span class=title></span>` would generate span containing the title. (optional)\n  :footer-template           | HTML template for the print footer. Should use the same format as the `headerTemplate`. (optional)\n  :prefer-css-page-size      | Whether or not to prefer page size as defined by css. Defaults to false,\nin which case the content will be scaled to fit the paper size. (optional)\n  :transfer-mode             | return as stream (optional)\n  :generate-tagged-pdf       | Whether or not to generate tagged (accessible) PDF. Defaults to embedder choice. (optional)\n  :generate-document-outline | Whether or not to embed the document outline into the PDF. (optional)\n\nReturn map keys:\n\n\n  Key     | Description \n  --------|------------ \n  :data   | Base64-encoded pdf data. Empty if |returnAsStream| is specified. (Encoded as a base64 string when passed over JSON)\n  :stream | A handle of the stream that holds resulting PDF data. (optional)"
  ([]
   (print-to-pdf
    (c/get-current-connection)
@@ -1537,11 +1709,12 @@
      margin-left
      margin-right
      page-ranges
-     ignore-invalid-page-ranges
      header-template
      footer-template
      prefer-css-page-size
-     transfer-mode]}]
+     transfer-mode
+     generate-tagged-pdf
+     generate-document-outline]}]
   (print-to-pdf
    (c/get-current-connection)
    params))
@@ -1559,23 +1732,24 @@
      margin-left
      margin-right
      page-ranges
-     ignore-invalid-page-ranges
      header-template
      footer-template
      prefer-css-page-size
-     transfer-mode]}]
+     transfer-mode
+     generate-tagged-pdf
+     generate-document-outline]}]
   (cmd/command
    connection
    "Page"
    "printToPDF"
    params
    {:page-ranges "pageRanges",
-    :ignore-invalid-page-ranges "ignoreInvalidPageRanges",
     :scale "scale",
     :header-template "headerTemplate",
     :display-header-footer "displayHeaderFooter",
     :margin-left "marginLeft",
     :margin-top "marginTop",
+    :generate-tagged-pdf "generateTaggedPDF",
     :transfer-mode "transferMode",
     :prefer-css-page-size "preferCSSPageSize",
     :landscape "landscape",
@@ -1584,7 +1758,8 @@
     :paper-width "paperWidth",
     :margin-right "marginRight",
     :margin-bottom "marginBottom",
-    :paper-height "paperHeight"})))
+    :paper-height "paperHeight",
+    :generate-document-outline "generateDocumentOutline"})))
 
 (s/fdef
  print-to-pdf
@@ -1608,11 +1783,12 @@
      ::margin-left
      ::margin-right
      ::page-ranges
-     ::ignore-invalid-page-ranges
      ::header-template
      ::footer-template
      ::prefer-css-page-size
-     ::transfer-mode]))
+     ::transfer-mode
+     ::generate-tagged-pdf
+     ::generate-document-outline]))
   :connection-and-params
   (s/cat
    :connection
@@ -1632,11 +1808,12 @@
      ::margin-left
      ::margin-right
      ::page-ranges
-     ::ignore-invalid-page-ranges
      ::header-template
      ::footer-template
      ::prefer-css-page-size
-     ::transfer-mode])))
+     ::transfer-mode
+     ::generate-tagged-pdf
+     ::generate-document-outline])))
  :ret
  (s/keys
   :req-un
@@ -1646,24 +1823,27 @@
 
 (defn
  reload
- "Reloads given page optionally ignoring the cache.\n\nParameters map keys:\n\n\n  Key                         | Description \n  ----------------------------|------------ \n  :ignore-cache               | If true, browser cache is ignored (as if the user pressed Shift+refresh). (optional)\n  :script-to-evaluate-on-load | If set, the script will be injected into all frames of the inspected page after reload.\nArgument will be ignored if reloading dataURL origin. (optional)"
+ "Reloads given page optionally ignoring the cache.\n\nParameters map keys:\n\n\n  Key                         | Description \n  ----------------------------|------------ \n  :ignore-cache               | If true, browser cache is ignored (as if the user pressed Shift+refresh). (optional)\n  :script-to-evaluate-on-load | If set, the script will be injected into all frames of the inspected page after reload.\nArgument will be ignored if reloading dataURL origin. (optional)\n  :loader-id                  | If set, an error will be thrown if the target page's main frame's\nloader id does not match the provided id. This prevents accidentally\nreloading an unintended target in case there's a racing navigation. (optional)"
  ([]
   (reload
    (c/get-current-connection)
    {}))
- ([{:as params, :keys [ignore-cache script-to-evaluate-on-load]}]
+ ([{:as params,
+    :keys [ignore-cache script-to-evaluate-on-load loader-id]}]
   (reload
    (c/get-current-connection)
    params))
  ([connection
-   {:as params, :keys [ignore-cache script-to-evaluate-on-load]}]
+   {:as params,
+    :keys [ignore-cache script-to-evaluate-on-load loader-id]}]
   (cmd/command
    connection
    "Page"
    "reload"
    params
    {:ignore-cache "ignoreCache",
-    :script-to-evaluate-on-load "scriptToEvaluateOnLoad"})))
+    :script-to-evaluate-on-load "scriptToEvaluateOnLoad",
+    :loader-id "loaderId"})))
 
 (s/fdef
  reload
@@ -1677,7 +1857,8 @@
    (s/keys
     :opt-un
     [::ignore-cache
-     ::script-to-evaluate-on-load]))
+     ::script-to-evaluate-on-load
+     ::loader-id]))
   :connection-and-params
   (s/cat
    :connection
@@ -1687,7 +1868,8 @@
    (s/keys
     :opt-un
     [::ignore-cache
-     ::script-to-evaluate-on-load])))
+     ::script-to-evaluate-on-load
+     ::loader-id])))
  :ret
  (s/keys))
 
@@ -2728,7 +2910,7 @@
 
 (defn
  produce-compilation-cache
- "Requests backend to produce compilation cache for the specified scripts.\n`scripts` are appeneded to the list of scripts for which the cache\nwould be produced. The list may be reset during page navigation.\nWhen script with a matching URL is encountered, the cache is optionally\nproduced upon backend discretion, based on internal heuristics.\nSee also: `Page.compilationCacheProduced`.\n\nParameters map keys:\n\n\n  Key      | Description \n  ---------|------------ \n  :scripts | null"
+ "Requests backend to produce compilation cache for the specified scripts.\n`scripts` are appended to the list of scripts for which the cache\nwould be produced. The list may be reset during page navigation.\nWhen script with a matching URL is encountered, the cache is optionally\nproduced upon backend discretion, based on internal heuristics.\nSee also: `Page.compilationCacheProduced`.\n\nParameters map keys:\n\n\n  Key      | Description \n  ---------|------------ \n  :scripts | null"
  ([]
   (produce-compilation-cache
    (c/get-current-connection)
@@ -2881,6 +3063,45 @@
  (s/keys))
 
 (defn
+ set-rph-registration-mode
+ "Extensions for Custom Handlers API:\nhttps://html.spec.whatwg.org/multipage/system-state.html#rph-automation\n\nParameters map keys:\n\n\n  Key   | Description \n  ------|------------ \n  :mode | null"
+ ([]
+  (set-rph-registration-mode
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys [mode]}]
+  (set-rph-registration-mode
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys [mode]}]
+  (cmd/command
+   connection
+   "Page"
+   "setRPHRegistrationMode"
+   params
+   {:mode "mode"})))
+
+(s/fdef
+ set-rph-registration-mode
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat
+   :params
+   (s/keys :req-un [:user/mode]))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys :req-un [:user/mode])))
+ :ret
+ (s/keys))
+
+(defn
  generate-test-report
  "Generates a report for testing.\n\nParameters map keys:\n\n\n  Key      | Description \n  ---------|------------ \n  :message | Message to be displayed in the report.\n  :group   | Specifies the endpoint group to deliver the report to. (optional)"
  ([]
@@ -2966,22 +3187,22 @@
 
 (defn
  set-intercept-file-chooser-dialog
- "Intercept file chooser requests and transfer control to protocol clients.\nWhen file chooser interception is enabled, native file chooser dialog is not shown.\nInstead, a protocol event `Page.fileChooserOpened` is emitted.\n\nParameters map keys:\n\n\n  Key      | Description \n  ---------|------------ \n  :enabled | null"
+ "Intercept file chooser requests and transfer control to protocol clients.\nWhen file chooser interception is enabled, native file chooser dialog is not shown.\nInstead, a protocol event `Page.fileChooserOpened` is emitted.\n\nParameters map keys:\n\n\n  Key      | Description \n  ---------|------------ \n  :enabled | null\n  :cancel  | If true, cancels the dialog by emitting relevant events (if any)\nin addition to not showing it if the interception is enabled\n(default: false). (optional)"
  ([]
   (set-intercept-file-chooser-dialog
    (c/get-current-connection)
    {}))
- ([{:as params, :keys [enabled]}]
+ ([{:as params, :keys [enabled cancel]}]
   (set-intercept-file-chooser-dialog
    (c/get-current-connection)
    params))
- ([connection {:as params, :keys [enabled]}]
+ ([connection {:as params, :keys [enabled cancel]}]
   (cmd/command
    connection
    "Page"
    "setInterceptFileChooserDialog"
    params
-   {:enabled "enabled"})))
+   {:enabled "enabled", :cancel "cancel"})))
 
 (s/fdef
  set-intercept-file-chooser-dialog
@@ -2992,13 +3213,103 @@
   :just-params
   (s/cat
    :params
-   (s/keys :req-un [:user/enabled]))
+   (s/keys
+    :req-un
+    [:user/enabled]
+    :opt-un
+    [:user/cancel]))
   :connection-and-params
   (s/cat
    :connection
    (s/?
     c/connection?)
    :params
-   (s/keys :req-un [:user/enabled])))
+   (s/keys
+    :req-un
+    [:user/enabled]
+    :opt-un
+    [:user/cancel])))
  :ret
  (s/keys))
+
+(defn
+ set-prerendering-allowed
+ "Enable/disable prerendering manually.\n\nThis command is a short-term solution for https://crbug.com/1440085.\nSee https://docs.google.com/document/d/12HVmFxYj5Jc-eJr5OmWsa2bqTJsbgGLKI6ZIyx0_wpA\nfor more details.\n\nTODO(https://crbug.com/1440085): Remove this once Puppeteer supports tab targets.\n\nParameters map keys:\n\n\n  Key         | Description \n  ------------|------------ \n  :is-allowed | null"
+ ([]
+  (set-prerendering-allowed
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys [is-allowed]}]
+  (set-prerendering-allowed
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys [is-allowed]}]
+  (cmd/command
+   connection
+   "Page"
+   "setPrerenderingAllowed"
+   params
+   {:is-allowed "isAllowed"})))
+
+(s/fdef
+ set-prerendering-allowed
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat
+   :params
+   (s/keys :req-un [:user/is-allowed]))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys :req-un [:user/is-allowed])))
+ :ret
+ (s/keys))
+
+(defn
+ get-annotated-page-content
+ "Get the annotated page content for the main frame.\nThis is an experimental command that is subject to change.\n\nParameters map keys:\n\n\n  Key                             | Description \n  --------------------------------|------------ \n  :include-actionable-information | Whether to include actionable information. Defaults to true. (optional)\n\nReturn map keys:\n\n\n  Key      | Description \n  ---------|------------ \n  :content | The annotated page content as a base64 encoded protobuf.\nThe format is defined by the `AnnotatedPageContent` message in\ncomponents/optimization_guide/proto/features/common_quality_data.proto (Encoded as a base64 string when passed over JSON)"
+ ([]
+  (get-annotated-page-content
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys [include-actionable-information]}]
+  (get-annotated-page-content
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys [include-actionable-information]}]
+  (cmd/command
+   connection
+   "Page"
+   "getAnnotatedPageContent"
+   params
+   {:include-actionable-information "includeActionableInformation"})))
+
+(s/fdef
+ get-annotated-page-content
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat
+   :params
+   (s/keys
+    :opt-un
+    [:user/include-actionable-information]))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys
+    :opt-un
+    [:user/include-actionable-information])))
+ :ret
+ (s/keys :req-un [:user/content]))

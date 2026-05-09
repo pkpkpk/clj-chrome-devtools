@@ -16,9 +16,9 @@
  ::affected-request
  (s/keys
   :req-un
-  [::request-id]
+  [::url]
   :opt-un
-  [::url]))
+  [::request-id]))
 
 (s/def
  ::affected-frame
@@ -28,25 +28,41 @@
 
 (s/def
  ::cookie-exclusion-reason
- #{"ExcludeSameSiteLax" "ExcludeSameSiteStrict"
-   "ExcludeSameSiteNoneInsecure"
+ #{"ExcludeDomainNonASCII" "ExcludeSameSiteLax" "ExcludeSameSiteStrict"
+   "ExcludeThirdPartyPhaseout" "ExcludeSameSiteNoneInsecure"
    "ExcludeSameSiteUnspecifiedTreatedAsLax"
-   "ExcludeSamePartyCrossPartyContext" "ExcludeInvalidSameParty"})
+   "ExcludeThirdPartyCookieBlockedInFirstPartySet"
+   "ExcludeSchemeMismatch" "ExcludePortMismatch"})
 
 (s/def
  ::cookie-warning-reason
- #{"WarnAttributeValueExceedsMaxSize"
+ #{"WarnAttributeValueExceedsMaxSize" "WarnDomainNonASCII"
    "WarnSameSiteUnspecifiedCrossSiteContext"
-   "WarnSameSiteStrictCrossDowngradeLax"
+   "WarnSameSiteStrictCrossDowngradeLax" "WarnDeprecationTrialMetadata"
    "WarnSameSiteLaxCrossDowngradeLax"
    "WarnSameSiteStrictLaxDowngradeStrict"
+   "WarnThirdPartyCookieHeuristic"
    "WarnSameSiteStrictCrossDowngradeStrict"
    "WarnSameSiteLaxCrossDowngradeStrict" "WarnSameSiteNoneInsecure"
-   "WarnSameSiteUnspecifiedLaxAllowUnsafe"})
+   "WarnSameSiteUnspecifiedLaxAllowUnsafe"
+   "WarnCrossSiteRedirectDowngradeChangesInclusion"
+   "WarnThirdPartyPhaseout"})
 
 (s/def
  ::cookie-operation
  #{"ReadCookie" "SetCookie"})
+
+(s/def
+ ::insight-type
+ #{"GracePeriod" "GitHubResource" "Heuristics"})
+
+(s/def
+ ::cookie-issue-insight
+ (s/keys
+  :req-un
+  [::type]
+  :opt-un
+  [::table-entry-url]))
 
 (s/def
  ::cookie-issue-details
@@ -60,7 +76,20 @@
    ::raw-cookie-line
    ::site-for-cookies
    ::cookie-url
-   ::request]))
+   ::request
+   ::insight]))
+
+(s/def
+ ::performance-issue-type
+ #{"DocumentCookie"})
+
+(s/def
+ ::performance-issue-details
+ (s/keys
+  :req-un
+  [::performance-issue-type]
+  :opt-un
+  [::source-code-location]))
 
 (s/def
  ::mixed-content-resolution-status
@@ -70,10 +99,10 @@
 (s/def
  ::mixed-content-resource-type
  #{"XSLT" "Script" "XMLHttpRequest" "Video" "Audio" "Prefetch"
-   "AttributionSrc" "Manifest" "ServiceWorker" "PluginResource" "Form"
-   "SharedWorker" "Download" "Font" "Import" "Favicon" "Worker" "Track"
-   "Beacon" "Frame" "CSPReport" "Ping" "Resource" "Stylesheet" "Image"
-   "EventSource" "PluginData"})
+   "AttributionSrc" "Manifest" "ServiceWorker" "SpeculationRules"
+   "PluginResource" "Form" "SharedWorker" "JSON" "Download" "Font"
+   "Import" "Favicon" "Worker" "Track" "Beacon" "Frame" "CSPReport"
+   "Ping" "Resource" "Stylesheet" "Image" "EventSource" "PluginData"})
 
 (s/def
  ::mixed-content-issue-details
@@ -89,9 +118,12 @@
 
 (s/def
  ::blocked-by-response-reason
- #{"CoepFrameResourceNeedsCoepHeader" "CorpNotSameSite"
+ #{"CoepFrameResourceNeedsCoepHeader" "SRIMessageSignatureMismatch"
+   "CorpNotSameSite"
    "CorpNotSameOriginAfterDefaultedToSameOriginByCoep"
-   "CoopSandboxedIFrameCannotNavigateToCoopPage" "CorpNotSameOrigin"})
+   "CorpNotSameOriginAfterDefaultedToSameOriginByDip"
+   "CoopSandboxedIFrameCannotNavigateToCoopPage" "CorpNotSameOrigin"
+   "CorpNotSameOriginAfterDefaultedToSameOriginByCoepAndDip"})
 
 (s/def
  ::blocked-by-response-issue-details
@@ -122,7 +154,8 @@
 (s/def
  ::content-security-policy-violation-type
  #{"kURLViolation" "kWasmEvalViolation" "kTrustedTypesPolicyViolation"
-   "kTrustedTypesSinkViolation" "kEvalViolation" "kInlineViolation"})
+   "kSRIViolation" "kTrustedTypesSinkViolation" "kEvalViolation"
+   "kInlineViolation"})
 
 (s/def
  ::source-code-location
@@ -160,33 +193,6 @@
    ::type]))
 
 (s/def
- ::twa-quality-enforcement-violation-type
- #{"kHttpError" "kDigitalAssetLinks" "kUnavailableOffline"})
-
-(s/def
- ::trusted-web-activity-issue-details
- (s/keys
-  :req-un
-  [::url
-   ::violation-type]
-  :opt-un
-  [::http-status-code
-   ::package-name
-   ::signature]))
-
-(s/def
- ::low-text-contrast-issue-details
- (s/keys
-  :req-un
-  [::violating-node-id
-   ::violating-node-selector
-   ::contrast-ratio
-   ::threshold-aa
-   ::threshold-aaa
-   ::font-size
-   ::font-weight]))
-
-(s/def
  ::cors-issue-details
  (s/keys
   :req-un
@@ -201,14 +207,65 @@
 
 (s/def
  ::attribution-reporting-issue-type
- #{"InvalidAttributionSourceExpiry"
-   "AttributionEventSourceTriggerDataTooLarge"
-   "InvalidAttributionSourcePriority" "InvalidEventSourceTriggerData"
-   "AttributionTriggerDataTooLarge" "PermissionPolicyDisabled"
-   "AttributionUntrustworthyOrigin"
-   "AttributionSourceUntrustworthyOrigin" "InvalidAttributionData"
-   "InvalidTriggerDedupKey" "InvalidAttributionSourceEventId"
-   "InvalidTriggerPriority"})
+ #{"NoWebOrOsSupport" "NoRegisterSourceHeader"
+   "InvalidRegisterOsSourceHeader" "NoRegisterOsTriggerHeader"
+   "NavigationRegistrationUniqueScopeAlreadySet"
+   "PermissionPolicyDisabled" "InvalidRegisterOsTriggerHeader"
+   "TriggerIgnored" "OsSourceIgnored" "UntrustworthyReportingOrigin"
+   "OsTriggerIgnored" "SourceAndTriggerHeaders" "InvalidInfoHeader"
+   "NoRegisterOsSourceHeader" "SourceIgnored" "NoRegisterTriggerHeader"
+   "InsecureContext" "InvalidHeader" "WebAndOsHeaders"
+   "InvalidRegisterTriggerHeader"
+   "NavigationRegistrationWithoutTransientUserActivation"})
+
+(s/def
+ ::shared-dictionary-error
+ #{"WriteErrorNonStringMatchField" "WriteErrorDisallowedBySettings"
+   "WriteErrorUnsupportedType" "WriteErrorNonTokenTypeField"
+   "WriteErrorInsufficientResources" "UseErrorCrossOriginNoCorsRequest"
+   "WriteErrorCossOriginNoCorsRequest" "WriteErrorInvalidTTLField"
+   "WriteErrorNonStringIdField" "WriteErrorInvalidStructuredHeader"
+   "WriteErrorNoMatchField" "WriteErrorRequestAborted"
+   "WriteErrorShuttingDown" "WriteErrorExpiredResponse"
+   "UseErrorMatchingDictionaryNotUsed"
+   "WriteErrorNonListMatchDestField"
+   "UseErrorUnexpectedContentDictionaryHeader"
+   "WriteErrorNonIntegerTTLField" "WriteErrorInvalidMatchField"
+   "WriteErrorNonStringInMatchDestList" "WriteErrorNavigationRequest"
+   "UseErrorDictionaryLoadFailure" "WriteErrorNonSecureContext"
+   "WriteErrorTooLongIdField" "WriteErrorFeatureDisabled"})
+
+(s/def
+ ::sri-message-signature-error
+ #{"SignatureInputHeaderKeyIdLength"
+   "SignatureHeaderValueIsParameterized"
+   "ValidationFailedSignatureMismatch"
+   "ValidationFailedIntegrityMismatch"
+   "SignatureInputHeaderInvalidComponentName"
+   "SignatureInputHeaderMissingRequiredParameters"
+   "SignatureInputHeaderInvalidDerivedComponentParameter"
+   "SignatureInputHeaderValueMissingComponents"
+   "ValidationFailedInvalidLength" "InvalidSignatureHeader"
+   "MissingSignatureInputHeader"
+   "SignatureHeaderValueIsNotByteSequence"
+   "SignatureInputHeaderInvalidComponentType"
+   "ValidationFailedSignatureExpired" "MissingSignatureHeader"
+   "SignatureHeaderValueIsIncorrectLength"
+   "SignatureInputHeaderInvalidHeaderComponentParameter"
+   "SignatureInputHeaderValueNotInnerList"
+   "SignatureInputHeaderMissingLabel" "InvalidSignatureInputHeader"
+   "SignatureInputHeaderInvalidParameter"})
+
+(s/def
+ ::unencoded-digest-error
+ #{"MalformedDictionary" "UnknownAlgorithm" "IncorrectDigestLength"
+   "IncorrectDigestType"})
+
+(s/def
+ ::connection-allowlist-error
+ #{"ItemNotInnerList" "InvalidUrlPattern" "MoreThanOneList"
+   "InvalidAllowlistItemType" "ReportingEndpointNotToken"
+   "InvalidHeader"})
 
 (s/def
  ::attribution-reporting-issue-details
@@ -216,8 +273,7 @@
   :req-un
   [::violation-type]
   :opt-un
-  [::frame
-   ::request
+  [::request
    ::violating-node-id
    ::invalid-parameter]))
 
@@ -232,37 +288,88 @@
    ::loader-id]))
 
 (s/def
- ::navigator-user-agent-issue-details
+ :user/navigator-user-agent-issue-details
+ (s/keys :req-un [:user/url] :opt-un [:user/location]))
+
+(s/def
+ :user/shared-dictionary-issue-details
  (s/keys
   :req-un
-  [::url]
-  :opt-un
-  [::location]))
+  [:user/shared-dictionary-error :user/request]))
 
 (s/def
- ::generic-issue-error-type
- #{"CrossOriginPortalPostMessageError"})
-
-(s/def
- ::generic-issue-details
+ :user/sri-message-signature-issue-details
  (s/keys
   :req-un
-  [::error-type]
-  :opt-un
-  [::frame-id]))
+  [:user/error
+   :user/signature-base
+   :user/integrity-assertions
+   :user/request]))
 
 (s/def
- ::deprecation-issue-details
+ :user/unencoded-digest-issue-details
+ (s/keys :req-un [:user/error :user/request]))
+
+(s/def
+ :user/connection-allowlist-issue-details
+ (s/keys :req-un [:user/error :user/request]))
+
+(s/def
+ :user/generic-issue-error-type
+ #{"FormLabelForNameError"
+   "AutofillAndManualTextPolicyControlledFeaturesInfo"
+   "FormDuplicateIdForInputError"
+   "FormModelContextMissingToolDescription"
+   "AutofillPolicyControlledFeatureInfo"
+   "FormInputHasWrongButWellIntendedAutocompleteValueError"
+   "FormInputWithNoLabelError"
+   "FormModelContextParameterMissingTitleAndDescription"
+   "FormAriaLabelledByToNonExistingIdError"
+   "FormLabelForMatchesNonExistingIdError"
+   "FormModelContextMissingToolName" "ResponseWasBlockedByORB"
+   "FormModelContextRequiredParameterMissingName"
+   "FormAutocompleteAttributeEmptyError"
+   "NavigationEntryMarkedSkippable"
+   "FormEmptyIdAndNameAttributesForInputError"
+   "ManualTextPolicyControlledFeatureInfo"
+   "FormLabelHasNeitherForNorNestedInputError"
+   "FormModelContextParameterMissingName"
+   "FormInputAssignedAutocompleteValueToIdOrNameAttributeError"})
+
+(s/def
+ :user/generic-issue-details
  (s/keys
   :req-un
-  [::source-code-location
-   ::deprecation-type]
+  [:user/error-type]
   :opt-un
-  [::affected-frame
-   ::message]))
+  [:user/frame-id
+   :user/violating-node-id
+   :user/violating-node-attribute
+   :user/request]))
 
 (s/def
- ::client-hint-issue-reason
+ :user/deprecation-issue-details
+ (s/keys
+  :req-un
+  [:user/source-code-location :user/type]
+  :opt-un
+  [:user/affected-frame]))
+
+(s/def
+ :user/bounce-tracking-issue-details
+ (s/keys :req-un [:user/tracking-sites]))
+
+(s/def
+ :user/cookie-deprecation-metadata-issue-details
+ (s/keys
+  :req-un
+  [:user/allowed-sites
+   :user/opt-out-percentage
+   :user/is-opt-out-top-level
+   :user/operation]))
+
+(s/def
+ :user/client-hint-issue-reason
  #{"MetaTagModifiedHTML" "MetaTagAllowListInvalidOrigin"})
 
 (s/def
@@ -273,15 +380,36 @@
 
 (s/def
  :user/federated-auth-request-issue-reason
- #{"ApprovalDeclined" "IdTokenNoResponse" "IdTokenInvalidRequest"
-   "DisabledInSettings" "InvalidSigninResponse" "ErrorFetchingSignin"
-   "ManifestInvalidResponse" "ManifestHttpNotFound"
-   "ClientMetadataMissingPrivacyPolicyUrl" "ClientMetadataNoResponse"
-   "Canceled" "ManifestNoResponse" "AccountsHttpNotFound"
-   "TooManyRequests" "IdTokenHttpNotFound" "AccountsNoResponse"
-   "ClientMetadataInvalidResponse" "AccountsInvalidResponse"
-   "ErrorIdToken" "ClientMetadataHttpNotFound"
-   "IdTokenInvalidResponse"})
+ #{"UiDismissedNoEmbargo" "AccountsInvalidContentType"
+   "ConfigNoResponse" "WellKnownNoResponse" "IdTokenInvalidContentType"
+   "WellKnownInvalidResponse" "WellKnownListEmpty" "IdTokenNoResponse"
+   "TypeNotMatching" "SuppressedBySegmentationPlatform"
+   "IdTokenInvalidRequest" "ConfigInvalidContentType"
+   "AccountsListEmpty" "DisabledInSettings" "InvalidSigninResponse"
+   "ErrorFetchingSignin" "ConfigHttpNotFound" "DisabledInFlags"
+   "SilentMediationFailure" "ReplacedByActiveMode"
+   "IdTokenCrossSiteIdpErrorResponse" "IdTokenIdpErrorResponse"
+   "ConfigNotInWellKnown" "Canceled" "RelyingPartyOriginIsOpaque"
+   "NotSignedInWithIdp" "AccountsHttpNotFound" "TooManyRequests"
+   "IdTokenHttpNotFound" "ConfigInvalidResponse" "WellKnownTooBig"
+   "AccountsNoResponse" "WellKnownHttpNotFound" "ShouldEmbargo"
+   "CorsError" "AccountsInvalidResponse" "ErrorIdToken"
+   "RpPageNotVisible" "IdTokenInvalidResponse"
+   "MissingTransientUserActivation" "IdpNotPotentiallyTrustworthy"
+   "WellKnownInvalidContentType"})
+
+(s/def
+ :user/federated-auth-user-info-request-issue-details
+ (s/keys
+  :req-un
+  [:user/federated-auth-user-info-request-issue-reason]))
+
+(s/def
+ :user/federated-auth-user-info-request-issue-reason
+ #{"NotPotentiallyTrustworthy" "InvalidAccountsResponse"
+   "NoReturningUserFromFetchedAccounts" "NotIframe" "NoApiPermission"
+   "InvalidConfigOrWellKnown" "NotSignedInWithIdp"
+   "NoAccountSharingPermission" "NotSameOrigin"})
 
 (s/def
  :user/client-hint-issue-details
@@ -290,13 +418,124 @@
   [:user/source-code-location :user/client-hint-issue-reason]))
 
 (s/def
+ :user/failed-request-info
+ (s/keys
+  :req-un
+  [:user/url :user/failure-message]
+  :opt-un
+  [:user/request-id]))
+
+(s/def
+ :user/partitioning-blob-url-info
+ #{"EnforceNoopenerForNavigation" "BlockedCrossPartitionFetching"})
+
+(s/def
+ :user/partitioning-blob-url-issue-details
+ (s/keys
+  :req-un
+  [:user/url :user/partitioning-blob-url-info]))
+
+(s/def
+ :user/element-accessibility-issue-reason
+ #{"DisallowedOptGroupChild" "InteractiveContentLegendChild"
+   "NonPhrasingContentOptionChild"
+   "InteractiveContentSummaryDescendant"
+   "InteractiveContentOptionChild" "DisallowedSelectChild"})
+
+(s/def
+ :user/element-accessibility-issue-details
+ (s/keys
+  :req-un
+  [:user/node-id
+   :user/element-accessibility-issue-reason
+   :user/has-disallowed-attributes]))
+
+(s/def
+ :user/style-sheet-loading-issue-reason
+ #{"RequestFailed" "LateImportRule"})
+
+(s/def
+ :user/stylesheet-loading-issue-details
+ (s/keys
+  :req-un
+  [:user/source-code-location :user/style-sheet-loading-issue-reason]
+  :opt-un
+  [:user/failed-request-info]))
+
+(s/def
+ :user/property-rule-issue-reason
+ #{"InvalidInherits" "InvalidSyntax" "InvalidInitialValue"
+   "InvalidName"})
+
+(s/def
+ :user/property-rule-issue-details
+ (s/keys
+  :req-un
+  [:user/source-code-location :user/property-rule-issue-reason]
+  :opt-un
+  [:user/property-value]))
+
+(s/def
+ :user/user-reidentification-issue-type
+ #{"BlockedFrameNavigation" "BlockedSubresource"
+   "NoisedCanvasReadback"})
+
+(s/def
+ :user/user-reidentification-issue-details
+ (s/keys
+  :req-un
+  [:user/type]
+  :opt-un
+  [:user/request :user/source-code-location]))
+
+(s/def
+ :user/permission-element-issue-type
+ #{"ActivationDisabled" "NonOpaqueColor" "PaddingRightUnsupported"
+   "PaddingBottomUnsupported" "GeolocationDeprecated" "LowContrast"
+   "CspFrameAncestorsMissing" "PermissionsPolicyBlocked"
+   "InvalidDisplayStyle" "SecurityChecksFailed" "RequestInProgress"
+   "FontSizeTooSmall" "FencedFrameDisallowed" "RegistrationFailed"
+   "TypeNotSupported" "InvalidTypeActivation" "UntrustedEvent"
+   "InsetBoxShadowUnsupported" "FontSizeTooLarge" "InvalidSizeValue"
+   "InvalidType"})
+
+(s/def
+ :user/permission-element-issue-details
+ (s/keys
+  :req-un
+  [:user/issue-type]
+  :opt-un
+  [:user/type
+   :user/node-id
+   :user/is-warning
+   :user/permission-name
+   :user/occluder-node-info
+   :user/occluder-parent-node-info
+   :user/disable-reason]))
+
+(s/def
+ :user/selective-permissions-intervention-issue-details
+ (s/keys
+  :req-un
+  [:user/api-name :user/ad-ancestry]
+  :opt-un
+  [:user/stack-trace]))
+
+(s/def
  :user/inspector-issue-code
- #{"AttributionReportingIssue" "BlockedByResponseIssue"
-   "MixedContentIssue" "ClientHintIssue" "SharedArrayBufferIssue"
-   "TrustedWebActivityIssue" "FederatedAuthRequestIssue"
-   "ContentSecurityPolicyIssue" "DeprecationIssue" "GenericIssue"
-   "LowTextContrastIssue" "CorsIssue" "NavigatorUserAgentIssue"
-   "CookieIssue" "QuirksModeIssue" "HeavyAdIssue"})
+ #{"PerformanceIssue" "AttributionReportingIssue"
+   "UnencodedDigestIssue" "BlockedByResponseIssue"
+   "UserReidentificationIssue" "MixedContentIssue"
+   "BounceTrackingIssue" "ElementAccessibilityIssue" "ClientHintIssue"
+   "SharedArrayBufferIssue" "SharedDictionaryIssue"
+   "FederatedAuthRequestIssue" "ContentSecurityPolicyIssue"
+   "DeprecationIssue" "GenericIssue" "SRIMessageSignatureIssue"
+   "FederatedAuthUserInfoRequestIssue"
+   "SelectivePermissionsInterventionIssue" "PropertyRuleIssue"
+   "StylesheetLoadingIssue" "CorsIssue" "NavigatorUserAgentIssue"
+   "ConnectionAllowlistIssue" "PermissionElementIssue" "CookieIssue"
+   "QuirksModeIssue" "HeavyAdIssue" "PartitioningBlobURLIssue"
+   "CookieDeprecationMetadataIssue"})
 
 (s/def
  :user/inspector-issue-details
@@ -308,16 +547,29 @@
    :user/heavy-ad-issue-details
    :user/content-security-policy-issue-details
    :user/shared-array-buffer-issue-details
-   :user/twa-quality-enforcement-details
-   :user/low-text-contrast-issue-details
    :user/cors-issue-details
    :user/attribution-reporting-issue-details
    :user/quirks-mode-issue-details
+   :user/partitioning-blob-url-issue-details
    :user/navigator-user-agent-issue-details
    :user/generic-issue-details
    :user/deprecation-issue-details
    :user/client-hint-issue-details
-   :user/federated-auth-request-issue-details]))
+   :user/federated-auth-request-issue-details
+   :user/bounce-tracking-issue-details
+   :user/cookie-deprecation-metadata-issue-details
+   :user/stylesheet-loading-issue-details
+   :user/property-rule-issue-details
+   :user/federated-auth-user-info-request-issue-details
+   :user/shared-dictionary-issue-details
+   :user/element-accessibility-issue-details
+   :user/sri-message-signature-issue-details
+   :user/unencoded-digest-issue-details
+   :user/connection-allowlist-issue-details
+   :user/user-reidentification-issue-details
+   :user/permission-element-issue-details
+   :user/performance-issue-details
+   :user/selective-permissions-intervention-issue-details]))
 
 (s/def :user/issue-id string?)
 
@@ -463,44 +715,40 @@
  (s/keys))
 
 (defn
- check-contrast
- "Runs the contrast check for the target page. Found issues are reported\nusing Audits.issueAdded event.\n\nParameters map keys:\n\n\n  Key         | Description \n  ------------|------------ \n  :report-aaa | Whether to report WCAG AAA level issues. Default is false. (optional)"
+ check-forms-issues
+ "Runs the form issues check for the target page. Found issues are reported\nusing Audits.issueAdded event.\n\nReturn map keys:\n\n\n  Key          | Description \n  -------------|------------ \n  :form-issues | null"
  ([]
-  (check-contrast
+  (check-forms-issues
    (c/get-current-connection)
    {}))
- ([{:as params, :keys [report-aaa]}]
-  (check-contrast
+ ([{:as params, :keys []}]
+  (check-forms-issues
    (c/get-current-connection)
    params))
- ([connection {:as params, :keys [report-aaa]}]
+ ([connection {:as params, :keys []}]
   (cmd/command
    connection
    "Audits"
-   "checkContrast"
+   "checkFormsIssues"
    params
-   {:report-aaa "reportAAA"})))
+   {})))
 
 (s/fdef
- check-contrast
+ check-forms-issues
  :args
  (s/or
   :no-args
   (s/cat)
   :just-params
-  (s/cat
-   :params
-   (s/keys
-    :opt-un
-    [::report-aaa]))
+  (s/cat :params (s/keys))
   :connection-and-params
   (s/cat
    :connection
    (s/?
     c/connection?)
    :params
-   (s/keys
-    :opt-un
-    [::report-aaa])))
+   (s/keys)))
  :ret
- (s/keys))
+ (s/keys
+  :req-un
+  [::form-issues]))

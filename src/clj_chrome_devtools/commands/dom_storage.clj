@@ -5,11 +5,17 @@
             [clj-chrome-devtools.impl.connection :as c]))
 
 (s/def
+ ::serialized-storage-key
+ string?)
+
+(s/def
  ::storage-id
  (s/keys
   :req-un
+  [::is-local-storage]
+  :opt-un
   [::security-origin
-   ::is-local-storage]))
+   ::storage-key]))
 
 (s/def
  ::item

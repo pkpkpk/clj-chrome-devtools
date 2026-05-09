@@ -51,23 +51,13 @@
  #{"webp" "jpeg" "unknown"})
 
 (s/def
- ::image-decode-accelerator-capability
- (s/keys
-  :req-un
-  [::image-type
-   ::max-dimensions
-   ::min-dimensions
-   ::subsamplings]))
-
-(s/def
  ::gpu-info
  (s/keys
   :req-un
   [::devices
    ::driver-bug-workarounds
    ::video-decoding
-   ::video-encoding
-   ::image-decoding]
+   ::video-encoding]
   :opt-un
   [::aux-attributes
    ::feature-status]))
@@ -120,6 +110,51 @@
    ::model-name
    ::model-version
    ::command-line]))
+
+(defn
+ get-feature-state
+ "Returns information about the feature state.\n\nParameters map keys:\n\n\n  Key            | Description \n  ---------------|------------ \n  :feature-state | null\n\nReturn map keys:\n\n\n  Key              | Description \n  -----------------|------------ \n  :feature-enabled | null"
+ ([]
+  (get-feature-state
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys [feature-state]}]
+  (get-feature-state
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys [feature-state]}]
+  (cmd/command
+   connection
+   "SystemInfo"
+   "getFeatureState"
+   params
+   {:feature-state "featureState"})))
+
+(s/fdef
+ get-feature-state
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat
+   :params
+   (s/keys
+    :req-un
+    [::feature-state]))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys
+    :req-un
+    [::feature-state])))
+ :ret
+ (s/keys
+  :req-un
+  [::feature-enabled]))
 
 (defn
  get-process-info

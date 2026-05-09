@@ -1,5 +1,5 @@
 (ns clj-chrome-devtools.commands.media
-  "This domain allows detailed inspection of media elements"
+  "This domain allows detailed inspection of media elements."
   (:require [clojure.spec.alpha :as s]
             [clj-chrome-devtools.impl.command :as cmd]
             [clj-chrome-devtools.impl.connection :as c]))
@@ -34,11 +34,29 @@
    ::value]))
 
 (s/def
+ ::player-error-source-location
+ (s/keys
+  :req-un
+  [::file
+   ::line]))
+
+(s/def
  ::player-error
  (s/keys
   :req-un
-  [::type
-   ::error-code]))
+  [::error-type
+   ::code
+   ::stack
+   ::cause
+   ::data]))
+
+(s/def
+ ::player
+ (s/keys
+  :req-un
+  [::player-id]
+  :opt-un
+  [::dom-node-id]))
 (defn
  enable
  "Enables the Media domain"

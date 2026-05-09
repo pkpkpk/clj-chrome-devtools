@@ -319,22 +319,38 @@
 
 (defn
  start-sampling
- "\n\nParameters map keys:\n\n\n  Key                | Description \n  -------------------|------------ \n  :sampling-interval | Average sample interval in bytes. Poisson distribution is used for the intervals. The\ndefault value is 32768 bytes. (optional)"
+ "\n\nParameters map keys:\n\n\n  Key                                    | Description \n  ---------------------------------------|------------ \n  :sampling-interval                     | Average sample interval in bytes. Poisson distribution is used for the intervals. The\ndefault value is 32768 bytes. (optional)\n  :stack-depth                           | Maximum stack depth. The default value is 128. (optional)\n  :include-objects-collected-by-major-gc | By default, the sampling heap profiler reports only objects which are\nstill alive when the profile is returned via getSamplingProfile or\nstopSampling, which is useful for determining what functions contribute\nthe most to steady-state memory usage. This flag instructs the sampling\nheap profiler to also include information about objects discarded by\nmajor GC, which will show which functions cause large temporary memory\nusage or long GC pauses. (optional)\n  :include-objects-collected-by-minor-gc | By default, the sampling heap profiler reports only objects which are\nstill alive when the profile is returned via getSamplingProfile or\nstopSampling, which is useful for determining what functions contribute\nthe most to steady-state memory usage. This flag instructs the sampling\nheap profiler to also include information about objects discarded by\nminor GC, which is useful when tuning a latency-sensitive application\nfor minimal GC activity. (optional)"
  ([]
   (start-sampling
    (c/get-current-connection)
    {}))
- ([{:as params, :keys [sampling-interval]}]
+ ([{:as params,
+    :keys
+    [sampling-interval
+     stack-depth
+     include-objects-collected-by-major-gc
+     include-objects-collected-by-minor-gc]}]
   (start-sampling
    (c/get-current-connection)
    params))
- ([connection {:as params, :keys [sampling-interval]}]
+ ([connection
+   {:as params,
+    :keys
+    [sampling-interval
+     stack-depth
+     include-objects-collected-by-major-gc
+     include-objects-collected-by-minor-gc]}]
   (cmd/command
    connection
    "HeapProfiler"
    "startSampling"
    params
-   {:sampling-interval "samplingInterval"})))
+   {:sampling-interval "samplingInterval",
+    :stack-depth "stackDepth",
+    :include-objects-collected-by-major-gc
+    "includeObjectsCollectedByMajorGC",
+    :include-objects-collected-by-minor-gc
+    "includeObjectsCollectedByMinorGC"})))
 
 (s/fdef
  start-sampling
@@ -347,7 +363,10 @@
    :params
    (s/keys
     :opt-un
-    [::sampling-interval]))
+    [::sampling-interval
+     ::stack-depth
+     ::include-objects-collected-by-major-gc
+     ::include-objects-collected-by-minor-gc]))
   :connection-and-params
   (s/cat
    :connection
@@ -356,7 +375,10 @@
    :params
    (s/keys
     :opt-un
-    [::sampling-interval])))
+    [::sampling-interval
+     ::stack-depth
+     ::include-objects-collected-by-major-gc
+     ::include-objects-collected-by-minor-gc])))
  :ret
  (s/keys))
 
@@ -444,7 +466,7 @@
 
 (defn
  stop-tracking-heap-objects
- "\n\nParameters map keys:\n\n\n  Key                            | Description \n  -------------------------------|------------ \n  :report-progress               | If true 'reportHeapSnapshotProgress' events will be generated while snapshot is being taken\nwhen the tracking is stopped. (optional)\n  :treat-global-objects-as-roots | null (optional)\n  :capture-numeric-value         | If true, numerical values are included in the snapshot (optional)"
+ "\n\nParameters map keys:\n\n\n  Key                            | Description \n  -------------------------------|------------ \n  :report-progress               | If true 'reportHeapSnapshotProgress' events will be generated while snapshot is being taken\nwhen the tracking is stopped. (optional)\n  :treat-global-objects-as-roots | Deprecated in favor of `exposeInternals`. (optional)\n  :capture-numeric-value         | If true, numerical values are included in the snapshot (optional)\n  :expose-internals              | If true, exposes internals of the snapshot. (optional)"
  ([]
   (stop-tracking-heap-objects
    (c/get-current-connection)
@@ -453,7 +475,8 @@
     :keys
     [report-progress
      treat-global-objects-as-roots
-     capture-numeric-value]}]
+     capture-numeric-value
+     expose-internals]}]
   (stop-tracking-heap-objects
    (c/get-current-connection)
    params))
@@ -462,7 +485,8 @@
     :keys
     [report-progress
      treat-global-objects-as-roots
-     capture-numeric-value]}]
+     capture-numeric-value
+     expose-internals]}]
   (cmd/command
    connection
    "HeapProfiler"
@@ -470,7 +494,8 @@
    params
    {:report-progress "reportProgress",
     :treat-global-objects-as-roots "treatGlobalObjectsAsRoots",
-    :capture-numeric-value "captureNumericValue"})))
+    :capture-numeric-value "captureNumericValue",
+    :expose-internals "exposeInternals"})))
 
 (s/fdef
  stop-tracking-heap-objects
@@ -485,7 +510,8 @@
     :opt-un
     [::report-progress
      ::treat-global-objects-as-roots
-     ::capture-numeric-value]))
+     ::capture-numeric-value
+     ::expose-internals]))
   :connection-and-params
   (s/cat
    :connection
@@ -496,13 +522,14 @@
     :opt-un
     [::report-progress
      ::treat-global-objects-as-roots
-     ::capture-numeric-value])))
+     ::capture-numeric-value
+     ::expose-internals])))
  :ret
  (s/keys))
 
 (defn
  take-heap-snapshot
- "\n\nParameters map keys:\n\n\n  Key                            | Description \n  -------------------------------|------------ \n  :report-progress               | If true 'reportHeapSnapshotProgress' events will be generated while snapshot is being taken. (optional)\n  :treat-global-objects-as-roots | If true, a raw snapshot without artificial roots will be generated (optional)\n  :capture-numeric-value         | If true, numerical values are included in the snapshot (optional)"
+ "\n\nParameters map keys:\n\n\n  Key                            | Description \n  -------------------------------|------------ \n  :report-progress               | If true 'reportHeapSnapshotProgress' events will be generated while snapshot is being taken. (optional)\n  :treat-global-objects-as-roots | If true, a raw snapshot without artificial roots will be generated.\nDeprecated in favor of `exposeInternals`. (optional)\n  :capture-numeric-value         | If true, numerical values are included in the snapshot (optional)\n  :expose-internals              | If true, exposes internals of the snapshot. (optional)"
  ([]
   (take-heap-snapshot
    (c/get-current-connection)
@@ -511,7 +538,8 @@
     :keys
     [report-progress
      treat-global-objects-as-roots
-     capture-numeric-value]}]
+     capture-numeric-value
+     expose-internals]}]
   (take-heap-snapshot
    (c/get-current-connection)
    params))
@@ -520,7 +548,8 @@
     :keys
     [report-progress
      treat-global-objects-as-roots
-     capture-numeric-value]}]
+     capture-numeric-value
+     expose-internals]}]
   (cmd/command
    connection
    "HeapProfiler"
@@ -528,7 +557,8 @@
    params
    {:report-progress "reportProgress",
     :treat-global-objects-as-roots "treatGlobalObjectsAsRoots",
-    :capture-numeric-value "captureNumericValue"})))
+    :capture-numeric-value "captureNumericValue",
+    :expose-internals "exposeInternals"})))
 
 (s/fdef
  take-heap-snapshot
@@ -543,7 +573,8 @@
     :opt-un
     [::report-progress
      ::treat-global-objects-as-roots
-     ::capture-numeric-value]))
+     ::capture-numeric-value
+     ::expose-internals]))
   :connection-and-params
   (s/cat
    :connection
@@ -554,6 +585,7 @@
     :opt-un
     [::report-progress
      ::treat-global-objects-as-roots
-     ::capture-numeric-value])))
+     ::capture-numeric-value
+     ::expose-internals])))
  :ret
  (s/keys))

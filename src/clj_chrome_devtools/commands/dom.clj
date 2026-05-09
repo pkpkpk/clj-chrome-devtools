@@ -1,5 +1,5 @@
 (ns clj-chrome-devtools.commands.dom
-  "This domain exposes DOM read/write operations. Each DOM Node is represented with its mirror object\nthat has an `id`. This `id` can be used to get additional information on the Node, resolve it into\nthe JavaScript object wrapper, etc. It is important that client receives DOM events only for the\nnodes that are known to the client. Backend keeps track of the nodes that were sent to the client\nand never sends the same node twice. It is client's responsibility to collect information about\nthe nodes that were sent to the client.<p>Note that `iframe` owner elements will return\ncorresponding document elements as their child nodes.</p>"
+  "This domain exposes DOM read/write operations. Each DOM Node is represented with its mirror object\nthat has an `id`. This `id` can be used to get additional information on the Node, resolve it into\nthe JavaScript object wrapper, etc. It is important that client receives DOM events only for the\nnodes that are known to the client. Backend keeps track of the nodes that were sent to the client\nand never sends the same node twice. It is client's responsibility to collect information about\nthe nodes that were sent to the client. Note that `iframe` owner elements will return\ncorresponding document elements as their child nodes."
   (:require [clojure.spec.alpha :as s]
             [clj-chrome-devtools.impl.command :as cmd]
             [clj-chrome-devtools.impl.connection :as c]))
@@ -13,6 +13,10 @@
  integer?)
 
 (s/def
+ ::style-sheet-id
+ string?)
+
+(s/def
  ::backend-node
  (s/keys
   :req-un
@@ -22,13 +26,18 @@
 
 (s/def
  ::pseudo-type
- #{"input-list-button" "first-line" "after" "scrollbar-track-piece"
-   "page-transition-container" "backdrop" "page-transition"
-   "first-line-inherited" "resizer" "scrollbar-corner" "first-letter"
-   "page-transition-incoming-image" "target-text" "scrollbar-button"
-   "page-transition-outgoing-image" "scrollbar" "scrollbar-track"
-   "grammar-error" "selection" "highlight" "marker" "before"
-   "scrollbar-thumb" "spelling-error" "page-transition-image-wrapper"})
+ #{"checkmark" "input-list-button" "view-transition-group-children"
+   "scroll-marker" "scroll-button" "first-line" "search-text" "after"
+   "overscroll-area-parent" "scrollbar-track-piece" "picker"
+   "view-transition-group" "view-transition-old" "placeholder"
+   "permission-icon" "view-transition" "backdrop" "picker-icon"
+   "first-line-inherited" "interest-button" "resizer"
+   "view-transition-new" "expand-icon" "scrollbar-corner"
+   "first-letter" "target-text" "view-transition-image-pair"
+   "scrollbar-button" "scroll-marker-group" "scrollbar" "column"
+   "scrollbar-track" "grammar-error" "file-selector-button" "selection"
+   "highlight" "marker" "before" "scrollbar-thumb" "spelling-error"
+   "details-content"})
 
 (s/def
  ::shadow-root-type
@@ -37,6 +46,18 @@
 (s/def
  ::compatibility-mode
  #{"LimitedQuirksMode" "NoQuirksMode" "QuirksMode"})
+
+(s/def
+ ::physical-axes
+ #{"Vertical" "Both" "Horizontal"})
+
+(s/def
+ ::logical-axes
+ #{"Both" "Block" "Inline"})
+
+(s/def
+ ::scroll-orientation
+ #{"vertical" "horizontal"})
 
 (s/def
  ::node
@@ -62,6 +83,7 @@
    ::name
    ::value
    ::pseudo-type
+   ::pseudo-identifier
    ::shadow-root-type
    ::frame-id
    ::content-document
@@ -71,7 +93,19 @@
    ::imported-document
    ::distributed-nodes
    ::is-svg
-   ::compatibility-mode]))
+   ::compatibility-mode
+   ::assigned-slot
+   ::is-scrollable
+   ::affected-by-starting-styles
+   ::adopted-style-sheets
+   ::ad-provenance]))
+
+(s/def
+ ::detached-element-info
+ (s/keys
+  :req-un
+  [::tree-node
+   ::retained-node-ids]))
 
 (s/def
  ::rgba
@@ -509,7 +543,7 @@
 
 (defn
  get-attributes
- "Returns attributes for the specified node.\n\nParameters map keys:\n\n\n  Key      | Description \n  ---------|------------ \n  :node-id | Id of the node to retrieve attibutes for.\n\nReturn map keys:\n\n\n  Key         | Description \n  ------------|------------ \n  :attributes | An interleaved array of node attribute names and values."
+ "Returns attributes for the specified node.\n\nParameters map keys:\n\n\n  Key      | Description \n  ---------|------------ \n  :node-id | Id of the node to retrieve attributes for.\n\nReturn map keys:\n\n\n  Key         | Description \n  ------------|------------ \n  :attributes | An interleaved array of node attribute names and values."
  ([]
   (get-attributes
    (c/get-current-connection)
@@ -656,7 +690,7 @@
 
 (defn
  get-document
- "Returns the root DOM node (and optionally the subtree) to the caller.\n\nParameters map keys:\n\n\n  Key     | Description \n  --------|------------ \n  :depth  | The maximum depth at which children should be retrieved, defaults to 1. Use -1 for the\nentire subtree or provide an integer larger than 0. (optional)\n  :pierce | Whether or not iframes and shadow roots should be traversed when returning the subtree\n(default is false). (optional)\n\nReturn map keys:\n\n\n  Key   | Description \n  ------|------------ \n  :root | Resulting node."
+ "Returns the root DOM node (and optionally the subtree) to the caller.\nImplicitly enables the DOM domain events for the current target.\n\nParameters map keys:\n\n\n  Key     | Description \n  --------|------------ \n  :depth  | The maximum depth at which children should be retrieved, defaults to 1. Use -1 for the\nentire subtree or provide an integer larger than 0. (optional)\n  :pierce | Whether or not iframes and shadow roots should be traversed when returning the subtree\n(default is false). (optional)\n\nReturn map keys:\n\n\n  Key   | Description \n  ------|------------ \n  :root | Resulting node."
  ([]
   (get-document
    (c/get-current-connection)
@@ -867,16 +901,19 @@
 
 (defn
  get-outer-html
- "Returns node's HTML markup.\n\nParameters map keys:\n\n\n  Key              | Description \n  -----------------|------------ \n  :node-id         | Identifier of the node. (optional)\n  :backend-node-id | Identifier of the backend node. (optional)\n  :object-id       | JavaScript object id of the node wrapper. (optional)\n\nReturn map keys:\n\n\n  Key         | Description \n  ------------|------------ \n  :outer-html | Outer HTML markup."
+ "Returns node's HTML markup.\n\nParameters map keys:\n\n\n  Key                 | Description \n  --------------------|------------ \n  :node-id            | Identifier of the node. (optional)\n  :backend-node-id    | Identifier of the backend node. (optional)\n  :object-id          | JavaScript object id of the node wrapper. (optional)\n  :include-shadow-dom | Include all shadow roots. Equals to false if not specified. (optional)\n\nReturn map keys:\n\n\n  Key         | Description \n  ------------|------------ \n  :outer-html | Outer HTML markup."
  ([]
   (get-outer-html
    (c/get-current-connection)
    {}))
- ([{:as params, :keys [node-id backend-node-id object-id]}]
+ ([{:as params,
+    :keys [node-id backend-node-id object-id include-shadow-dom]}]
   (get-outer-html
    (c/get-current-connection)
    params))
- ([connection {:as params, :keys [node-id backend-node-id object-id]}]
+ ([connection
+   {:as params,
+    :keys [node-id backend-node-id object-id include-shadow-dom]}]
   (cmd/command
    connection
    "DOM"
@@ -884,7 +921,8 @@
    params
    {:node-id "nodeId",
     :backend-node-id "backendNodeId",
-    :object-id "objectId"})))
+    :object-id "objectId",
+    :include-shadow-dom "includeShadowDOM"})))
 
 (s/fdef
  get-outer-html
@@ -899,7 +937,8 @@
     :opt-un
     [::node-id
      ::backend-node-id
-     ::object-id]))
+     ::object-id
+     ::include-shadow-dom]))
   :connection-and-params
   (s/cat
    :connection
@@ -910,7 +949,8 @@
     :opt-un
     [::node-id
      ::backend-node-id
-     ::object-id])))
+     ::object-id
+     ::include-shadow-dom])))
  :ret
  (s/keys
   :req-un
@@ -1451,6 +1491,92 @@
   [::node-ids]))
 
 (defn
+ get-top-layer-elements
+ "Returns NodeIds of current top layer elements.\nTop layer is rendered closest to the user within a viewport, therefore its elements always\nappear on top of all other content.\n\nReturn map keys:\n\n\n  Key       | Description \n  ----------|------------ \n  :node-ids | NodeIds of top layer elements"
+ ([]
+  (get-top-layer-elements
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys []}]
+  (get-top-layer-elements
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys []}]
+  (cmd/command
+   connection
+   "DOM"
+   "getTopLayerElements"
+   params
+   {})))
+
+(s/fdef
+ get-top-layer-elements
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat :params (s/keys))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys)))
+ :ret
+ (s/keys
+  :req-un
+  [::node-ids]))
+
+(defn
+ get-element-by-relation
+ "Returns the NodeId of the matched element according to certain relations.\n\nParameters map keys:\n\n\n  Key       | Description \n  ----------|------------ \n  :node-id  | Id of the node from which to query the relation.\n  :relation | Type of relation to get.\n\nReturn map keys:\n\n\n  Key      | Description \n  ---------|------------ \n  :node-id | NodeId of the element matching the queried relation."
+ ([]
+  (get-element-by-relation
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys [node-id relation]}]
+  (get-element-by-relation
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys [node-id relation]}]
+  (cmd/command
+   connection
+   "DOM"
+   "getElementByRelation"
+   params
+   {:node-id "nodeId", :relation "relation"})))
+
+(s/fdef
+ get-element-by-relation
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat
+   :params
+   (s/keys
+    :req-un
+    [::node-id
+     ::relation]))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys
+    :req-un
+    [::node-id
+     ::relation])))
+ :ret
+ (s/keys
+  :req-un
+  [::node-id]))
+
+(defn
  redo
  "Re-does the last undone action."
  ([]
@@ -1560,18 +1686,14 @@
   :just-params
   (s/cat
    :params
-   (s/keys
-    :req-un
-    [::node-id]))
+   (s/keys :req-un [:user/node-id]))
   :connection-and-params
   (s/cat
    :connection
    (s/?
     c/connection?)
    :params
-   (s/keys
-    :req-un
-    [::node-id])))
+   (s/keys :req-un [:user/node-id])))
  :ret
  (s/keys))
 
@@ -1605,10 +1727,9 @@
    :params
    (s/keys
     :req-un
-    [::node-id]
+    [:user/node-id]
     :opt-un
-    [::depth
-     ::pierce]))
+    [:user/depth :user/pierce]))
   :connection-and-params
   (s/cat
    :connection
@@ -1617,10 +1738,9 @@
    :params
    (s/keys
     :req-un
-    [::node-id]
+    [:user/node-id]
     :opt-un
-    [::depth
-     ::pierce])))
+    [:user/depth :user/pierce])))
  :ret
  (s/keys))
 
@@ -1977,6 +2097,43 @@
  (s/keys :req-un [:user/path]))
 
 (defn
+ get-detached-dom-nodes
+ "Returns list of detached nodes\n\nReturn map keys:\n\n\n  Key             | Description \n  ----------------|------------ \n  :detached-nodes | The list of detached nodes"
+ ([]
+  (get-detached-dom-nodes
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys []}]
+  (get-detached-dom-nodes
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys []}]
+  (cmd/command
+   connection
+   "DOM"
+   "getDetachedDomNodes"
+   params
+   {})))
+
+(s/fdef
+ get-detached-dom-nodes
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat :params (s/keys))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys)))
+ :ret
+ (s/keys :req-un [:user/detached-nodes]))
+
+(defn
  set-inspected-node
  "Enables console to refer to the node with given id via $x (see Command Line API for more details\n$x functions).\n\nParameters map keys:\n\n\n  Key      | Description \n  ---------|------------ \n  :node-id | DOM node id to be accessible by means of $x command line API."
  ([]
@@ -2214,22 +2371,42 @@
 
 (defn
  get-container-for-node
- "Returns the container of the given node based on container query conditions.\nIf containerName is given, it will find the nearest container with a matching name;\notherwise it will find the nearest container regardless of its container name.\n\nParameters map keys:\n\n\n  Key             | Description \n  ----------------|------------ \n  :node-id        | null\n  :container-name | null (optional)\n\nReturn map keys:\n\n\n  Key      | Description \n  ---------|------------ \n  :node-id | The container node for the given node, or null if not found. (optional)"
+ "Returns the query container of the given node based on container query\nconditions: containerName, physical and logical axes, and whether it queries\nscroll-state or anchored elements. If no axes are provided and\nqueriesScrollState is false, the style container is returned, which is the\ndirect parent or the closest element with a matching container-name.\n\nParameters map keys:\n\n\n  Key                   | Description \n  ----------------------|------------ \n  :node-id              | null\n  :container-name       | null (optional)\n  :physical-axes        | null (optional)\n  :logical-axes         | null (optional)\n  :queries-scroll-state | null (optional)\n  :queries-anchored     | null (optional)\n\nReturn map keys:\n\n\n  Key      | Description \n  ---------|------------ \n  :node-id | The container node for the given node, or null if not found. (optional)"
  ([]
   (get-container-for-node
    (c/get-current-connection)
    {}))
- ([{:as params, :keys [node-id container-name]}]
+ ([{:as params,
+    :keys
+    [node-id
+     container-name
+     physical-axes
+     logical-axes
+     queries-scroll-state
+     queries-anchored]}]
   (get-container-for-node
    (c/get-current-connection)
    params))
- ([connection {:as params, :keys [node-id container-name]}]
+ ([connection
+   {:as params,
+    :keys
+    [node-id
+     container-name
+     physical-axes
+     logical-axes
+     queries-scroll-state
+     queries-anchored]}]
   (cmd/command
    connection
    "DOM"
    "getContainerForNode"
    params
-   {:node-id "nodeId", :container-name "containerName"})))
+   {:node-id "nodeId",
+    :container-name "containerName",
+    :physical-axes "physicalAxes",
+    :logical-axes "logicalAxes",
+    :queries-scroll-state "queriesScrollState",
+    :queries-anchored "queriesAnchored"})))
 
 (s/fdef
  get-container-for-node
@@ -2244,7 +2421,11 @@
     :req-un
     [:user/node-id]
     :opt-un
-    [:user/container-name]))
+    [:user/container-name
+     :user/physical-axes
+     :user/logical-axes
+     :user/queries-scroll-state
+     :user/queries-anchored]))
   :connection-and-params
   (s/cat
    :connection
@@ -2255,7 +2436,11 @@
     :req-un
     [:user/node-id]
     :opt-un
-    [:user/container-name])))
+    [:user/container-name
+     :user/physical-axes
+     :user/logical-axes
+     :user/queries-scroll-state
+     :user/queries-anchored])))
  :ret
  (s/keys :opt-un [:user/node-id]))
 
@@ -2295,5 +2480,91 @@
     c/connection?)
    :params
    (s/keys :req-un [:user/node-id])))
+ :ret
+ (s/keys :req-un [:user/node-ids]))
+
+(defn
+ get-anchor-element
+ "Returns the target anchor element of the given anchor query according to\nhttps://www.w3.org/TR/css-anchor-position-1/#target.\n\nParameters map keys:\n\n\n  Key               | Description \n  ------------------|------------ \n  :node-id          | Id of the positioned element from which to find the anchor.\n  :anchor-specifier | An optional anchor specifier, as defined in\nhttps://www.w3.org/TR/css-anchor-position-1/#anchor-specifier.\nIf not provided, it will return the implicit anchor element for\nthe given positioned element. (optional)\n\nReturn map keys:\n\n\n  Key      | Description \n  ---------|------------ \n  :node-id | The anchor element of the given anchor query."
+ ([]
+  (get-anchor-element
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys [node-id anchor-specifier]}]
+  (get-anchor-element
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys [node-id anchor-specifier]}]
+  (cmd/command
+   connection
+   "DOM"
+   "getAnchorElement"
+   params
+   {:node-id "nodeId", :anchor-specifier "anchorSpecifier"})))
+
+(s/fdef
+ get-anchor-element
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat
+   :params
+   (s/keys
+    :req-un
+    [:user/node-id]
+    :opt-un
+    [:user/anchor-specifier]))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys
+    :req-un
+    [:user/node-id]
+    :opt-un
+    [:user/anchor-specifier])))
+ :ret
+ (s/keys :req-un [:user/node-id]))
+
+(defn
+ force-show-popover
+ "When enabling, this API force-opens the popover identified by nodeId\nand keeps it open until disabled.\n\nParameters map keys:\n\n\n  Key      | Description \n  ---------|------------ \n  :node-id | Id of the popover HTMLElement\n  :enable  | If true, opens the popover and keeps it open. If false, closes the\npopover if it was previously force-opened.\n\nReturn map keys:\n\n\n  Key       | Description \n  ----------|------------ \n  :node-ids | List of popovers that were closed in order to respect popover stacking order."
+ ([]
+  (force-show-popover
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys [node-id enable]}]
+  (force-show-popover
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys [node-id enable]}]
+  (cmd/command
+   connection
+   "DOM"
+   "forceShowPopover"
+   params
+   {:node-id "nodeId", :enable "enable"})))
+
+(s/fdef
+ force-show-popover
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat
+   :params
+   (s/keys :req-un [:user/node-id :user/enable]))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys :req-un [:user/node-id :user/enable])))
  :ret
  (s/keys :req-un [:user/node-ids]))

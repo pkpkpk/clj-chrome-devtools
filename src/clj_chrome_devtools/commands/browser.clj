@@ -28,13 +28,17 @@
 
 (s/def
  ::permission-type
- #{"clipboardReadWrite" "paymentHandler" "notifications" "audioCapture"
-   "idleDetection" "nfc" "geolocation" "wakeLockScreen" "sensors"
-   "videoCapture" "accessibilityEvents" "wakeLockSystem"
-   "backgroundSync" "displayCapture" "durableStorage" "midi"
-   "videoCapturePanTiltZoom" "flash" "periodicBackgroundSync"
+ #{"clipboardReadWrite" "paymentHandler" "webAppInstallation"
+   "notifications" "audioCapture" "idleDetection" "pointerLock" "nfc"
+   "geolocation" "cameraPanTiltZoom" "wakeLockScreen"
+   "capturedSurfaceControl" "windowManagement" "sensors" "webPrinting"
+   "videoCapture" "wakeLockSystem" "vr" "keyboardLock"
+   "localNetworkAccess" "loopbackNetwork" "backgroundSync"
+   "displayCapture" "storageAccess" "durableStorage" "smartCard"
+   "localNetwork" "midi" "ar" "localFonts" "topLevelStorageAccess"
+   "periodicBackgroundSync" "handTracking" "speakerSelection"
    "clipboardSanitizedWrite" "backgroundFetch" "midiSysex"
-   "protectedMediaIdentifier"})
+   "automaticFullscreen" "protectedMediaIdentifier"})
 
 (s/def
  ::permission-setting
@@ -49,11 +53,12 @@
   [::sysex
    ::user-visible-only
    ::allow-without-sanitization
+   ::allow-without-gesture
    ::pan-tilt-zoom]))
 
 (s/def
  ::browser-command-id
- #{"closeTabSearch" "openTabSearch"})
+ #{"openGlic" "closeTabSearch" "openTabSearch"})
 
 (s/def
  ::bucket
@@ -71,19 +76,27 @@
    ::sum
    ::count
    ::buckets]))
+
+(s/def
+ ::privacy-sandbox-api
+ #{"BiddingAndAuctionServices" "TrustedKeyValue"})
 (defn
  set-permission
- "Set permission settings for given origin.\n\nParameters map keys:\n\n\n  Key                 | Description \n  --------------------|------------ \n  :permission         | Descriptor of permission to override.\n  :setting            | Setting of the permission.\n  :origin             | Origin the permission applies to, all origins if not specified. (optional)\n  :browser-context-id | Context to override. When omitted, default browser context is used. (optional)"
+ "Set permission settings for given embedding and embedded origins.\n\nParameters map keys:\n\n\n  Key                 | Description \n  --------------------|------------ \n  :permission         | Descriptor of permission to override.\n  :setting            | Setting of the permission.\n  :origin             | Embedding origin the permission applies to, all origins if not specified. (optional)\n  :embedded-origin    | Embedded origin the permission applies to. It is ignored unless the embedding origin is\npresent and valid. If the embedding origin is provided but the embedded origin isn't, the\nembedding origin is used as the embedded origin. (optional)\n  :browser-context-id | Context to override. When omitted, default browser context is used. (optional)"
  ([]
   (set-permission
    (c/get-current-connection)
    {}))
- ([{:as params, :keys [permission setting origin browser-context-id]}]
+ ([{:as params,
+    :keys
+    [permission setting origin embedded-origin browser-context-id]}]
   (set-permission
    (c/get-current-connection)
    params))
  ([connection
-   {:as params, :keys [permission setting origin browser-context-id]}]
+   {:as params,
+    :keys
+    [permission setting origin embedded-origin browser-context-id]}]
   (cmd/command
    connection
    "Browser"
@@ -92,6 +105,7 @@
    {:permission "permission",
     :setting "setting",
     :origin "origin",
+    :embedded-origin "embeddedOrigin",
     :browser-context-id "browserContextId"})))
 
 (s/fdef
@@ -109,6 +123,7 @@
      ::setting]
     :opt-un
     [::origin
+     ::embedded-origin
      ::browser-context-id]))
   :connection-and-params
   (s/cat
@@ -122,13 +137,14 @@
      ::setting]
     :opt-un
     [::origin
+     ::embedded-origin
      ::browser-context-id])))
  :ret
  (s/keys))
 
 (defn
  grant-permissions
- "Grant specific permissions to the given origin and reject all others.\n\nParameters map keys:\n\n\n  Key                 | Description \n  --------------------|------------ \n  :permissions        | null\n  :origin             | Origin the permission applies to, all origins if not specified. (optional)\n  :browser-context-id | BrowserContext to override permissions. When omitted, default browser context is used. (optional)"
+ "Grant specific permissions to the given origin and reject all others. Deprecated. Use\nsetPermission instead.\n\nParameters map keys:\n\n\n  Key                 | Description \n  --------------------|------------ \n  :permissions        | null\n  :origin             | Origin the permission applies to, all origins if not specified. (optional)\n  :browser-context-id | BrowserContext to override permissions. When omitted, default browser context is used. (optional)"
  ([]
   (grant-permissions
    (c/get-current-connection)
@@ -223,7 +239,7 @@
 
 (defn
  set-download-behavior
- "Set the behavior when downloading a file.\n\nParameters map keys:\n\n\n  Key                 | Description \n  --------------------|------------ \n  :behavior           | Whether to allow all or deny all download requests, or use default Chrome behavior if\navailable (otherwise deny). |allowAndName| allows download and names files according to\ntheir dowmload guids.\n  :browser-context-id | BrowserContext to set download behavior. When omitted, default browser context is used. (optional)\n  :download-path      | The default path to save downloaded files to. This is required if behavior is set to 'allow'\nor 'allowAndName'. (optional)\n  :events-enabled     | Whether to emit download events (defaults to false). (optional)"
+ "Set the behavior when downloading a file.\n\nParameters map keys:\n\n\n  Key                 | Description \n  --------------------|------------ \n  :behavior           | Whether to allow all or deny all download requests, or use default Chrome behavior if\navailable (otherwise deny). |allowAndName| allows download and names files according to\ntheir download guids.\n  :browser-context-id | BrowserContext to set download behavior. When omitted, default browser context is used. (optional)\n  :download-path      | The default path to save downloaded files to. This is required if behavior is set to 'allow'\nor 'allowAndName'. (optional)\n  :events-enabled     | Whether to emit download events (defaults to false). (optional)"
  ([]
   (set-download-behavior
    (c/get-current-connection)
@@ -520,7 +536,7 @@
 
 (defn
  get-histograms
- "Get Chrome histograms.\n\nParameters map keys:\n\n\n  Key    | Description \n  -------|------------ \n  :query | Requested substring in name. Only histograms which have query as a\nsubstring in their name are extracted. An empty or absent query returns\nall histograms. (optional)\n  :delta | If true, retrieve delta since last call. (optional)\n\nReturn map keys:\n\n\n  Key         | Description \n  ------------|------------ \n  :histograms | Histograms."
+ "Get Chrome histograms.\n\nParameters map keys:\n\n\n  Key    | Description \n  -------|------------ \n  :query | Requested substring in name. Only histograms which have query as a\nsubstring in their name are extracted. An empty or absent query returns\nall histograms. (optional)\n  :delta | If true, retrieve delta since last delta call. (optional)\n\nReturn map keys:\n\n\n  Key         | Description \n  ------------|------------ \n  :histograms | Histograms."
  ([]
   (get-histograms
    (c/get-current-connection)
@@ -567,7 +583,7 @@
 
 (defn
  get-histogram
- "Get a Chrome histogram by name.\n\nParameters map keys:\n\n\n  Key    | Description \n  -------|------------ \n  :name  | Requested histogram name.\n  :delta | If true, retrieve delta since last call. (optional)\n\nReturn map keys:\n\n\n  Key        | Description \n  -----------|------------ \n  :histogram | Histogram."
+ "Get a Chrome histogram by name.\n\nParameters map keys:\n\n\n  Key    | Description \n  -------|------------ \n  :name  | Requested histogram name.\n  :delta | If true, retrieve delta since last delta call. (optional)\n\nReturn map keys:\n\n\n  Key        | Description \n  -----------|------------ \n  :histogram | Histogram."
  ([]
   (get-histogram
    (c/get-current-connection)
@@ -751,6 +767,55 @@
  (s/keys))
 
 (defn
+ set-contents-size
+ "Set size of the browser contents resizing browser window as necessary.\n\nParameters map keys:\n\n\n  Key        | Description \n  -----------|------------ \n  :window-id | Browser window id.\n  :width     | The window contents width in DIP. Assumes current width if omitted.\nMust be specified if 'height' is omitted. (optional)\n  :height    | The window contents height in DIP. Assumes current height if omitted.\nMust be specified if 'width' is omitted. (optional)"
+ ([]
+  (set-contents-size
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys [window-id width height]}]
+  (set-contents-size
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys [window-id width height]}]
+  (cmd/command
+   connection
+   "Browser"
+   "setContentsSize"
+   params
+   {:window-id "windowId", :width "width", :height "height"})))
+
+(s/fdef
+ set-contents-size
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat
+   :params
+   (s/keys
+    :req-un
+    [::window-id]
+    :opt-un
+    [::width
+     ::height]))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys
+    :req-un
+    [::window-id]
+    :opt-un
+    [::width
+     ::height])))
+ :ret
+ (s/keys))
+
+(defn
  set-dock-tile
  "Set dock tile details, platform-specific.\n\nParameters map keys:\n\n\n  Key          | Description \n  -------------|------------ \n  :badge-label | null (optional)\n  :image       | Png encoded image. (Encoded as a base64 string when passed over JSON) (optional)"
  ([]
@@ -835,5 +900,105 @@
    (s/keys
     :req-un
     [::command-id])))
+ :ret
+ (s/keys))
+
+(defn
+ add-privacy-sandbox-enrollment-override
+ "Allows a site to use privacy sandbox features that require enrollment\nwithout the site actually being enrolled. Only supported on page targets.\n\nParameters map keys:\n\n\n  Key  | Description \n  -----|------------ \n  :url | null"
+ ([]
+  (add-privacy-sandbox-enrollment-override
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys [url]}]
+  (add-privacy-sandbox-enrollment-override
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys [url]}]
+  (cmd/command
+   connection
+   "Browser"
+   "addPrivacySandboxEnrollmentOverride"
+   params
+   {:url "url"})))
+
+(s/fdef
+ add-privacy-sandbox-enrollment-override
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat
+   :params
+   (s/keys
+    :req-un
+    [::url]))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys
+    :req-un
+    [::url])))
+ :ret
+ (s/keys))
+
+(defn
+ add-privacy-sandbox-coordinator-key-config
+ "Configures encryption keys used with a given privacy sandbox API to talk\nto a trusted coordinator.  Since this is intended for test automation only,\ncoordinatorOrigin must be a .test domain. No existing coordinator\nconfiguration for the origin may exist.\n\nParameters map keys:\n\n\n  Key                 | Description \n  --------------------|------------ \n  :api                | null\n  :coordinator-origin | null\n  :key-config         | null\n  :browser-context-id | BrowserContext to perform the action in. When omitted, default browser\ncontext is used. (optional)"
+ ([]
+  (add-privacy-sandbox-coordinator-key-config
+   (c/get-current-connection)
+   {}))
+ ([{:as params,
+    :keys [api coordinator-origin key-config browser-context-id]}]
+  (add-privacy-sandbox-coordinator-key-config
+   (c/get-current-connection)
+   params))
+ ([connection
+   {:as params,
+    :keys [api coordinator-origin key-config browser-context-id]}]
+  (cmd/command
+   connection
+   "Browser"
+   "addPrivacySandboxCoordinatorKeyConfig"
+   params
+   {:api "api",
+    :coordinator-origin "coordinatorOrigin",
+    :key-config "keyConfig",
+    :browser-context-id "browserContextId"})))
+
+(s/fdef
+ add-privacy-sandbox-coordinator-key-config
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat
+   :params
+   (s/keys
+    :req-un
+    [::api
+     ::coordinator-origin
+     ::key-config]
+    :opt-un
+    [::browser-context-id]))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys
+    :req-un
+    [::api
+     ::coordinator-origin
+     ::key-config]
+    :opt-un
+    [::browser-context-id])))
  :ret
  (s/keys))

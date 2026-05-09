@@ -17,7 +17,19 @@
    ::type]
   :opt-un
   [::source
-   ::css-id]))
+   ::css-id
+   ::view-or-scroll-timeline]))
+
+(s/def
+ ::view-or-scroll-timeline
+ (s/keys
+  :req-un
+  [::axis]
+  :opt-un
+  [::source-node-id
+   ::start-offset
+   ::end-offset
+   ::subject-node-id]))
 
 (s/def
  ::animation-effect
@@ -26,13 +38,13 @@
   [::delay
    ::end-delay
    ::iteration-start
-   ::iterations
    ::duration
    ::direction
    ::fill
    ::easing]
   :opt-un
-  [::backend-node-id
+  [::iterations
+   ::backend-node-id
    ::keyframes-rule]))
 
 (s/def

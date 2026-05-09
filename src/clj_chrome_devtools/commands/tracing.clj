@@ -12,6 +12,7 @@
  (s/keys
   :opt-un
   [::record-mode
+   ::trace-buffer-size-in-kb
    ::enable-sampling
    ::enable-systrace
    ::enable-argument-filter
@@ -110,6 +111,45 @@
  (s/keys
   :req-un
   [::categories]))
+
+(defn
+ get-track-event-descriptor
+ "Return a descriptor for all available tracing categories.\n\nReturn map keys:\n\n\n  Key         | Description \n  ------------|------------ \n  :descriptor | Base64-encoded serialized perfetto.protos.TrackEventDescriptor protobuf message. (Encoded as a base64 string when passed over JSON)"
+ ([]
+  (get-track-event-descriptor
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys []}]
+  (get-track-event-descriptor
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys []}]
+  (cmd/command
+   connection
+   "Tracing"
+   "getTrackEventDescriptor"
+   params
+   {})))
+
+(s/fdef
+ get-track-event-descriptor
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat :params (s/keys))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys)))
+ :ret
+ (s/keys
+  :req-un
+  [::descriptor]))
 
 (defn
  record-clock-sync-marker

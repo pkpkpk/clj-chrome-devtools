@@ -48,7 +48,8 @@
    ::this]
   :opt-un
   [::function-location
-   ::return-value]))
+   ::return-value
+   ::can-be-restarted]))
 
 (s/def
  ::scope
@@ -79,6 +80,13 @@
    ::type]))
 
 (s/def
+ ::wasm-disassembly-chunk
+ (s/keys
+  :req-un
+  [::lines
+   ::bytecode-offsets]))
+
+(s/def
  ::script-language
  #{"WebAssembly" "JavaScript"})
 
@@ -89,6 +97,13 @@
   [::type]
   :opt-un
   [::external-url]))
+
+(s/def
+ ::resolved-breakpoint
+ (s/keys
+  :req-un
+  [::breakpoint-id
+   ::location]))
 (defn
  continue-to-location
  "Continues execution until specific location is reached.\n\nParameters map keys:\n\n\n  Key                 | Description \n  --------------------|------------ \n  :location           | Location to continue to.\n  :target-call-frames | null (optional)"
@@ -413,6 +428,100 @@
   [::bytecode]))
 
 (defn
+ disassemble-wasm-module
+ "\n\nParameters map keys:\n\n\n  Key        | Description \n  -----------|------------ \n  :script-id | Id of the script to disassemble\n\nReturn map keys:\n\n\n  Key                    | Description \n  -----------------------|------------ \n  :stream-id             | For large modules, return a stream from which additional chunks of\ndisassembly can be read successively. (optional)\n  :total-number-of-lines | The total number of lines in the disassembly text.\n  :function-body-offsets | The offsets of all function bodies, in the format [start1, end1,\nstart2, end2, ...] where all ends are exclusive.\n  :chunk                 | The first chunk of disassembly."
+ ([]
+  (disassemble-wasm-module
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys [script-id]}]
+  (disassemble-wasm-module
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys [script-id]}]
+  (cmd/command
+   connection
+   "Debugger"
+   "disassembleWasmModule"
+   params
+   {:script-id "scriptId"})))
+
+(s/fdef
+ disassemble-wasm-module
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat
+   :params
+   (s/keys
+    :req-un
+    [::script-id]))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys
+    :req-un
+    [::script-id])))
+ :ret
+ (s/keys
+  :req-un
+  [::total-number-of-lines
+   ::function-body-offsets
+   ::chunk]
+  :opt-un
+  [::stream-id]))
+
+(defn
+ next-wasm-disassembly-chunk
+ "Disassemble the next chunk of lines for the module corresponding to the\nstream. If disassembly is complete, this API will invalidate the streamId\nand return an empty chunk. Any subsequent calls for the now invalid stream\nwill return errors.\n\nParameters map keys:\n\n\n  Key        | Description \n  -----------|------------ \n  :stream-id | null\n\nReturn map keys:\n\n\n  Key    | Description \n  -------|------------ \n  :chunk | The next chunk of disassembly."
+ ([]
+  (next-wasm-disassembly-chunk
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys [stream-id]}]
+  (next-wasm-disassembly-chunk
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys [stream-id]}]
+  (cmd/command
+   connection
+   "Debugger"
+   "nextWasmDisassemblyChunk"
+   params
+   {:stream-id "streamId"})))
+
+(s/fdef
+ next-wasm-disassembly-chunk
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat
+   :params
+   (s/keys
+    :req-un
+    [::stream-id]))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys
+    :req-un
+    [::stream-id])))
+ :ret
+ (s/keys
+  :req-un
+  [::chunk]))
+
+(defn
  get-wasm-bytecode
  "This command is deprecated. Use getScriptSource instead.\n\nParameters map keys:\n\n\n  Key        | Description \n  -----------|------------ \n  :script-id | Id of the Wasm script to get source for.\n\nReturn map keys:\n\n\n  Key       | Description \n  ----------|------------ \n  :bytecode | Script source. (Encoded as a base64 string when passed over JSON)"
  ([]
@@ -627,22 +736,22 @@
 
 (defn
  restart-frame
- "Restarts particular call frame from the beginning.\n\nParameters map keys:\n\n\n  Key            | Description \n  ---------------|------------ \n  :call-frame-id | Call frame identifier to evaluate on.\n\nReturn map keys:\n\n\n  Key                   | Description \n  ----------------------|------------ \n  :call-frames          | New stack trace.\n  :async-stack-trace    | Async stack trace, if any. (optional)\n  :async-stack-trace-id | Async stack trace, if any. (optional)"
+ "Restarts particular call frame from the beginning. The old, deprecated\nbehavior of `restartFrame` is to stay paused and allow further CDP commands\nafter a restart was scheduled. This can cause problems with restarting, so\nwe now continue execution immediatly after it has been scheduled until we\nreach the beginning of the restarted frame.\n\nTo stay back-wards compatible, `restartFrame` now expects a `mode`\nparameter to be present. If the `mode` parameter is missing, `restartFrame`\nerrors out.\n\nThe various return values are deprecated and `callFrames` is always empty.\nUse the call frames from the `Debugger#paused` events instead, that fires\nonce V8 pauses at the beginning of the restarted function.\n\nParameters map keys:\n\n\n  Key            | Description \n  ---------------|------------ \n  :call-frame-id | Call frame identifier to evaluate on.\n  :mode          | The `mode` parameter must be present and set to 'StepInto', otherwise\n`restartFrame` will error out. (optional)\n\nReturn map keys:\n\n\n  Key                   | Description \n  ----------------------|------------ \n  :call-frames          | New stack trace.\n  :async-stack-trace    | Async stack trace, if any. (optional)\n  :async-stack-trace-id | Async stack trace, if any. (optional)"
  ([]
   (restart-frame
    (c/get-current-connection)
    {}))
- ([{:as params, :keys [call-frame-id]}]
+ ([{:as params, :keys [call-frame-id mode]}]
   (restart-frame
    (c/get-current-connection)
    params))
- ([connection {:as params, :keys [call-frame-id]}]
+ ([connection {:as params, :keys [call-frame-id mode]}]
   (cmd/command
    connection
    "Debugger"
    "restartFrame"
    params
-   {:call-frame-id "callFrameId"})))
+   {:call-frame-id "callFrameId", :mode "mode"})))
 
 (s/fdef
  restart-frame
@@ -655,7 +764,9 @@
    :params
    (s/keys
     :req-un
-    [::call-frame-id]))
+    [::call-frame-id]
+    :opt-un
+    [::mode]))
   :connection-and-params
   (s/cat
    :connection
@@ -664,7 +775,9 @@
    :params
    (s/keys
     :req-un
-    [::call-frame-id])))
+    [::call-frame-id]
+    :opt-un
+    [::mode])))
  :ret
  (s/keys
   :req-un
@@ -817,23 +930,66 @@
  (s/keys))
 
 (defn
+ set-blackbox-execution-contexts
+ "Replace previous blackbox execution contexts with passed ones. Forces backend to skip\nstepping/pausing in scripts in these execution contexts. VM will try to leave blackboxed script by\nperforming 'step in' several times, finally resorting to 'step out' if unsuccessful.\n\nParameters map keys:\n\n\n  Key         | Description \n  ------------|------------ \n  :unique-ids | Array of execution context unique ids for the debugger to ignore."
+ ([]
+  (set-blackbox-execution-contexts
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys [unique-ids]}]
+  (set-blackbox-execution-contexts
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys [unique-ids]}]
+  (cmd/command
+   connection
+   "Debugger"
+   "setBlackboxExecutionContexts"
+   params
+   {:unique-ids "uniqueIds"})))
+
+(s/fdef
+ set-blackbox-execution-contexts
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat
+   :params
+   (s/keys
+    :req-un
+    [::unique-ids]))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys
+    :req-un
+    [::unique-ids])))
+ :ret
+ (s/keys))
+
+(defn
  set-blackbox-patterns
- "Replace previous blackbox patterns with passed ones. Forces backend to skip stepping/pausing in\nscripts with url matching one of the patterns. VM will try to leave blackboxed script by\nperforming 'step in' several times, finally resorting to 'step out' if unsuccessful.\n\nParameters map keys:\n\n\n  Key       | Description \n  ----------|------------ \n  :patterns | Array of regexps that will be used to check script url for blackbox state."
+ "Replace previous blackbox patterns with passed ones. Forces backend to skip stepping/pausing in\nscripts with url matching one of the patterns. VM will try to leave blackboxed script by\nperforming 'step in' several times, finally resorting to 'step out' if unsuccessful.\n\nParameters map keys:\n\n\n  Key             | Description \n  ----------------|------------ \n  :patterns       | Array of regexps that will be used to check script url for blackbox state.\n  :skip-anonymous | If true, also ignore scripts with no source url. (optional)"
  ([]
   (set-blackbox-patterns
    (c/get-current-connection)
    {}))
- ([{:as params, :keys [patterns]}]
+ ([{:as params, :keys [patterns skip-anonymous]}]
   (set-blackbox-patterns
    (c/get-current-connection)
    params))
- ([connection {:as params, :keys [patterns]}]
+ ([connection {:as params, :keys [patterns skip-anonymous]}]
   (cmd/command
    connection
    "Debugger"
    "setBlackboxPatterns"
    params
-   {:patterns "patterns"})))
+   {:patterns "patterns", :skip-anonymous "skipAnonymous"})))
 
 (s/fdef
  set-blackbox-patterns
@@ -846,7 +1002,9 @@
    :params
    (s/keys
     :req-un
-    [::patterns]))
+    [::patterns]
+    :opt-un
+    [::skip-anonymous]))
   :connection-and-params
   (s/cat
    :connection
@@ -855,7 +1013,9 @@
    :params
    (s/keys
     :req-un
-    [::patterns])))
+    [::patterns]
+    :opt-un
+    [::skip-anonymous])))
  :ret
  (s/keys))
 
@@ -1161,7 +1321,7 @@
 
 (defn
  set-pause-on-exceptions
- "Defines pause on exceptions state. Can be set to stop on all exceptions, uncaught exceptions or\nno exceptions. Initial pause on exceptions state is `none`.\n\nParameters map keys:\n\n\n  Key    | Description \n  -------|------------ \n  :state | Pause on exceptions mode."
+ "Defines pause on exceptions state. Can be set to stop on all exceptions, uncaught exceptions,\nor caught exceptions, no exceptions. Initial pause on exceptions state is `none`.\n\nParameters map keys:\n\n\n  Key    | Description \n  -------|------------ \n  :state | Pause on exceptions mode."
  ([]
   (set-pause-on-exceptions
    (c/get-current-connection)
@@ -1247,16 +1407,19 @@
 
 (defn
  set-script-source
- "Edits JavaScript source live.\n\nParameters map keys:\n\n\n  Key            | Description \n  ---------------|------------ \n  :script-id     | Id of the script to edit.\n  :script-source | New content of the script.\n  :dry-run       | If true the change will not actually be applied. Dry run may be used to get result\ndescription without actually modifying the code. (optional)\n\nReturn map keys:\n\n\n  Key                   | Description \n  ----------------------|------------ \n  :call-frames          | New stack trace in case editing has happened while VM was stopped. (optional)\n  :stack-changed        | Whether current call stack  was modified after applying the changes. (optional)\n  :async-stack-trace    | Async stack trace, if any. (optional)\n  :async-stack-trace-id | Async stack trace, if any. (optional)\n  :exception-details    | Exception details if any. (optional)"
+ "Edits JavaScript source live.\n\nIn general, functions that are currently on the stack can not be edited with\na single exception: If the edited function is the top-most stack frame and\nthat is the only activation of that function on the stack. In this case\nthe live edit will be successful and a `Debugger.restartFrame` for the\ntop-most function is automatically triggered.\n\nParameters map keys:\n\n\n  Key                      | Description \n  -------------------------|------------ \n  :script-id               | Id of the script to edit.\n  :script-source           | New content of the script.\n  :dry-run                 | If true the change will not actually be applied. Dry run may be used to get result\ndescription without actually modifying the code. (optional)\n  :allow-top-frame-editing | If true, then `scriptSource` is allowed to change the function on top of the stack\nas long as the top-most stack frame is the only activation of that function. (optional)\n\nReturn map keys:\n\n\n  Key                   | Description \n  ----------------------|------------ \n  :call-frames          | New stack trace in case editing has happened while VM was stopped. (optional)\n  :stack-changed        | Whether current call stack  was modified after applying the changes. (optional)\n  :async-stack-trace    | Async stack trace, if any. (optional)\n  :async-stack-trace-id | Async stack trace, if any. (optional)\n  :status               | Whether the operation was successful or not. Only `Ok` denotes a\nsuccessful live edit while the other enum variants denote why\nthe live edit failed.\n  :exception-details    | Exception details if any. Only present when `status` is `CompileError`. (optional)"
  ([]
   (set-script-source
    (c/get-current-connection)
    {}))
- ([{:as params, :keys [script-id script-source dry-run]}]
+ ([{:as params,
+    :keys [script-id script-source dry-run allow-top-frame-editing]}]
   (set-script-source
    (c/get-current-connection)
    params))
- ([connection {:as params, :keys [script-id script-source dry-run]}]
+ ([connection
+   {:as params,
+    :keys [script-id script-source dry-run allow-top-frame-editing]}]
   (cmd/command
    connection
    "Debugger"
@@ -1264,7 +1427,8 @@
    params
    {:script-id "scriptId",
     :script-source "scriptSource",
-    :dry-run "dryRun"})))
+    :dry-run "dryRun",
+    :allow-top-frame-editing "allowTopFrameEditing"})))
 
 (s/fdef
  set-script-source
@@ -1280,7 +1444,8 @@
     [::script-id
      ::script-source]
     :opt-un
-    [::dry-run]))
+    [::dry-run
+     ::allow-top-frame-editing]))
   :connection-and-params
   (s/cat
    :connection
@@ -1292,9 +1457,12 @@
     [::script-id
      ::script-source]
     :opt-un
-    [::dry-run])))
+    [::dry-run
+     ::allow-top-frame-editing])))
  :ret
  (s/keys
+  :req-un
+  [::status]
   :opt-un
   [::call-frames
    ::stack-changed
@@ -1510,17 +1678,13 @@
   :just-params
   (s/cat
    :params
-   (s/keys
-    :opt-un
-    [::skip-list]))
+   (s/keys :opt-un [:user/skip-list]))
   :connection-and-params
   (s/cat
    :connection
    (s/?
     c/connection?)
    :params
-   (s/keys
-    :opt-un
-    [::skip-list])))
+   (s/keys :opt-un [:user/skip-list])))
  :ret
  (s/keys))

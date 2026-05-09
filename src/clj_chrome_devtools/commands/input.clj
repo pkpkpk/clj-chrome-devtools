@@ -272,7 +272,7 @@
 
 (defn
  ime-set-composition
- "This method sets the current candidate text for ime.\nUse imeCommitComposition to commit the final text.\nUse imeSetComposition with empty string as text to cancel composition.\n\nParameters map keys:\n\n\n  Key                | Description \n  -------------------|------------ \n  :text              | The text to insert\n  :selection-start   | selection start\n  :selection-end     | selection end\n  :replacement-start | replacement start (optional)\n  :replacement-end   | replacement end (optional)"
+ "This method sets the current candidate text for IME.\nUse imeCommitComposition to commit the final text.\nUse imeSetComposition with empty string as text to cancel composition.\n\nParameters map keys:\n\n\n  Key                | Description \n  -------------------|------------ \n  :text              | The text to insert\n  :selection-start   | selection start\n  :selection-end     | selection end\n  :replacement-start | replacement start (optional)\n  :replacement-end   | replacement end (optional)"
  ([]
   (ime-set-composition
    (c/get-current-connection)
@@ -517,6 +517,43 @@
     :opt-un
     [::modifiers
      ::timestamp])))
+ :ret
+ (s/keys))
+
+(defn
+ cancel-dragging
+ "Cancels any active dragging in the page."
+ ([]
+  (cancel-dragging
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys []}]
+  (cancel-dragging
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys []}]
+  (cmd/command
+   connection
+   "Input"
+   "cancelDragging"
+   params
+   {})))
+
+(s/fdef
+ cancel-dragging
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat :params (s/keys))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys)))
  :ret
  (s/keys))
 

@@ -30,9 +30,16 @@
    ::uuid
    ::base-address
    ::size]))
+
+(s/def
+ ::dom-counter
+ (s/keys
+  :req-un
+  [::name
+   ::count]))
 (defn
  get-dom-counters
- "\n\nReturn map keys:\n\n\n  Key                 | Description \n  --------------------|------------ \n  :documents          | null\n  :nodes              | null\n  :js-event-listeners | null"
+ "Retruns current DOM object counters.\n\nReturn map keys:\n\n\n  Key                 | Description \n  --------------------|------------ \n  :documents          | null\n  :nodes              | null\n  :js-event-listeners | null"
  ([]
   (get-dom-counters
    (c/get-current-connection)
@@ -72,8 +79,47 @@
    ::js-event-listeners]))
 
 (defn
+ get-dom-counters-for-leak-detection
+ "Retruns DOM object counters after preparing renderer for leak detection.\n\nReturn map keys:\n\n\n  Key       | Description \n  ----------|------------ \n  :counters | DOM object counters."
+ ([]
+  (get-dom-counters-for-leak-detection
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys []}]
+  (get-dom-counters-for-leak-detection
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys []}]
+  (cmd/command
+   connection
+   "Memory"
+   "getDOMCountersForLeakDetection"
+   params
+   {})))
+
+(s/fdef
+ get-dom-counters-for-leak-detection
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat :params (s/keys))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys)))
+ :ret
+ (s/keys
+  :req-un
+  [::counters]))
+
+(defn
  prepare-for-leak-detection
- ""
+ "Prepares for leak detection by terminating workers, stopping spellcheckers,\ndropping non-essential internal caches, running garbage collections, etc."
  ([]
   (prepare-for-leak-detection
    (c/get-current-connection)

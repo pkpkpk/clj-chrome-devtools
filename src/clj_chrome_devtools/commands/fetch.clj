@@ -249,7 +249,7 @@
 
 (defn
  continue-request
- "Continues the request, optionally modifying some of its parameters.\n\nParameters map keys:\n\n\n  Key                 | Description \n  --------------------|------------ \n  :request-id         | An id the client received in requestPaused event.\n  :url                | If set, the request url will be modified in a way that's not observable by page. (optional)\n  :method             | If set, the request method is overridden. (optional)\n  :post-data          | If set, overrides the post data in the request. (Encoded as a base64 string when passed over JSON) (optional)\n  :headers            | If set, overrides the request headers. (optional)\n  :intercept-response | If set, overrides response interception behavior for this request. (optional)"
+ "Continues the request, optionally modifying some of its parameters.\n\nParameters map keys:\n\n\n  Key                 | Description \n  --------------------|------------ \n  :request-id         | An id the client received in requestPaused event.\n  :url                | If set, the request url will be modified in a way that's not observable by page. (optional)\n  :method             | If set, the request method is overridden. (optional)\n  :post-data          | If set, overrides the post data in the request. (Encoded as a base64 string when passed over JSON) (optional)\n  :headers            | If set, overrides the request headers. Note that the overrides do not\nextend to subsequent redirect hops, if a redirect happens. Another override\nmay be applied to a different request produced by a redirect. (optional)\n  :intercept-response | If set, overrides response interception behavior for this request. (optional)"
  ([]
   (continue-request
    (c/get-current-connection)
@@ -430,7 +430,7 @@
 
 (defn
  get-response-body
- "Causes the body of the response to be received from the server and\nreturned as a single string. May only be issued for a request that\nis paused in the Response stage and is mutually exclusive with\ntakeResponseBodyForInterceptionAsStream. Calling other methods that\naffect the request or disabling fetch domain before body is received\nresults in an undefined behavior.\n\nParameters map keys:\n\n\n  Key         | Description \n  ------------|------------ \n  :request-id | Identifier for the intercepted request to get body for.\n\nReturn map keys:\n\n\n  Key             | Description \n  ----------------|------------ \n  :body           | Response body.\n  :base64-encoded | True, if content was sent as base64."
+ "Causes the body of the response to be received from the server and\nreturned as a single string. May only be issued for a request that\nis paused in the Response stage and is mutually exclusive with\ntakeResponseBodyForInterceptionAsStream. Calling other methods that\naffect the request or disabling fetch domain before body is received\nresults in an undefined behavior.\nNote that the response body is not available for redirects. Requests\npaused in the _redirect received_ state may be differentiated by\n`responseCode` and presence of `location` response header, see\ncomments to `requestPaused` for details.\n\nParameters map keys:\n\n\n  Key         | Description \n  ------------|------------ \n  :request-id | Identifier for the intercepted request to get body for.\n\nReturn map keys:\n\n\n  Key             | Description \n  ----------------|------------ \n  :body           | Response body.\n  :base64-encoded | True, if content was sent as base64."
  ([]
   (get-response-body
    (c/get-current-connection)

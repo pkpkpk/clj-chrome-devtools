@@ -36,7 +36,8 @@
   [::script-last-modified
    ::script-response-time
    ::controlled-clients
-   ::target-id]))
+   ::target-id
+   ::router-rules]))
 
 (s/def
  ::service-worker-error-message
@@ -268,49 +269,6 @@
     c/connection?)
    :params
    (s/keys)))
- :ret
- (s/keys))
-
-(defn
- inspect-worker
- "\n\nParameters map keys:\n\n\n  Key         | Description \n  ------------|------------ \n  :version-id | null"
- ([]
-  (inspect-worker
-   (c/get-current-connection)
-   {}))
- ([{:as params, :keys [version-id]}]
-  (inspect-worker
-   (c/get-current-connection)
-   params))
- ([connection {:as params, :keys [version-id]}]
-  (cmd/command
-   connection
-   "ServiceWorker"
-   "inspectWorker"
-   params
-   {:version-id "versionId"})))
-
-(s/fdef
- inspect-worker
- :args
- (s/or
-  :no-args
-  (s/cat)
-  :just-params
-  (s/cat
-   :params
-   (s/keys
-    :req-un
-    [::version-id]))
-  :connection-and-params
-  (s/cat
-   :connection
-   (s/?
-    c/connection?)
-   :params
-   (s/keys
-    :req-un
-    [::version-id])))
  :ret
  (s/keys))
 

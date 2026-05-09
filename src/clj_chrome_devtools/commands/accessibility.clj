@@ -67,13 +67,18 @@
 
 (s/def
  ::ax-property-name
- #{"editable" "readonly" "activedescendant" "selected" "hasPopup"
-   "autocomplete" "pressed" "multiline" "settable" "multiselectable"
-   "valuetext" "modal" "root" "invalid" "valuemin" "level"
-   "describedby" "busy" "valuemax" "focused" "hiddenRoot" "required"
-   "controls" "details" "hidden" "roledescription" "atomic" "flowto"
-   "disabled" "relevant" "keyshortcuts" "owns" "live" "labelledby"
-   "expanded" "checked" "errormessage" "orientation" "focusable"})
+ #{"activeModalDialog" "editable" "readonly" "probablyPresentational"
+   "activedescendant" "selected" "hasPopup" "autocomplete" "url"
+   "activeFullscreenElement" "ariaHiddenSubtree" "labelFor" "pressed"
+   "multiline" "settable" "activeAriaModalDialog" "multiselectable"
+   "uninteresting" "ariaHiddenElement" "valuetext" "notVisible" "modal"
+   "root" "invalid" "valuemin" "emptyAlt" "inactiveCarouselTabContent"
+   "level" "emptyText" "describedby" "presentationalRole" "busy"
+   "valuemax" "focused" "hiddenRoot" "required" "labelContainer"
+   "inertSubtree" "controls" "details" "hidden" "roledescription"
+   "atomic" "flowto" "notRendered" "disabled" "relevant" "inertElement"
+   "keyshortcuts" "owns" "live" "labelledby" "expanded" "checked"
+   "errormessage" "orientation" "focusable" "actions"})
 
 (s/def
  ::ax-node
@@ -84,6 +89,7 @@
   :opt-un
   [::ignored-reasons
    ::role
+   ::chrome-role
    ::name
    ::description
    ::value
@@ -168,7 +174,7 @@
 
 (defn
  get-partial-ax-tree
- "Fetches the accessibility node and partial accessibility tree for this DOM node, if it exists.\n\nParameters map keys:\n\n\n  Key              | Description \n  -----------------|------------ \n  :node-id         | Identifier of the node to get the partial accessibility tree for. (optional)\n  :backend-node-id | Identifier of the backend node to get the partial accessibility tree for. (optional)\n  :object-id       | JavaScript object id of the node wrapper to get the partial accessibility tree for. (optional)\n  :fetch-relatives | Whether to fetch this nodes ancestors, siblings and children. Defaults to true. (optional)\n\nReturn map keys:\n\n\n  Key    | Description \n  -------|------------ \n  :nodes | The `Accessibility.AXNode` for this DOM node, if it exists, plus its ancestors, siblings and\nchildren, if requested."
+ "Fetches the accessibility node and partial accessibility tree for this DOM node, if it exists.\n\nParameters map keys:\n\n\n  Key              | Description \n  -----------------|------------ \n  :node-id         | Identifier of the node to get the partial accessibility tree for. (optional)\n  :backend-node-id | Identifier of the backend node to get the partial accessibility tree for. (optional)\n  :object-id       | JavaScript object id of the node wrapper to get the partial accessibility tree for. (optional)\n  :fetch-relatives | Whether to fetch this node's ancestors, siblings and children. Defaults to true. (optional)\n\nReturn map keys:\n\n\n  Key    | Description \n  -------|------------ \n  :nodes | The `Accessibility.AXNode` for this DOM node, if it exists, plus its ancestors, siblings and\nchildren, if requested."
  ([]
   (get-partial-ax-tree
    (c/get-current-connection)
@@ -225,7 +231,7 @@
 
 (defn
  get-full-ax-tree
- "Fetches the entire accessibility tree for the root Document\n\nParameters map keys:\n\n\n  Key       | Description \n  ----------|------------ \n  :depth    | The maximum depth at which descendants of the root node should be retrieved.\nIf omitted, the full tree is returned. (optional)\n  :frame-id | The frame for whose document the AX tree should be retrieved.\nIf omited, the root frame is used. (optional)\n\nReturn map keys:\n\n\n  Key    | Description \n  -------|------------ \n  :nodes | null"
+ "Fetches the entire accessibility tree for the root Document\n\nParameters map keys:\n\n\n  Key       | Description \n  ----------|------------ \n  :depth    | The maximum depth at which descendants of the root node should be retrieved.\nIf omitted, the full tree is returned. (optional)\n  :frame-id | The frame for whose document the AX tree should be retrieved.\nIf omitted, the root frame is used. (optional)\n\nReturn map keys:\n\n\n  Key    | Description \n  -------|------------ \n  :nodes | null"
  ([]
   (get-full-ax-tree
    (c/get-current-connection)
@@ -417,7 +423,7 @@
 
 (defn
  query-ax-tree
- "Query a DOM node's accessibility subtree for accessible name and role.\nThis command computes the name and role for all nodes in the subtree, including those that are\nignored for accessibility, and returns those that mactch the specified name and role. If no DOM\nnode is specified, or the DOM node does not exist, the command returns an error. If neither\n`accessibleName` or `role` is specified, it returns all the accessibility nodes in the subtree.\n\nParameters map keys:\n\n\n  Key              | Description \n  -----------------|------------ \n  :node-id         | Identifier of the node for the root to query. (optional)\n  :backend-node-id | Identifier of the backend node for the root to query. (optional)\n  :object-id       | JavaScript object id of the node wrapper for the root to query. (optional)\n  :accessible-name | Find nodes with this computed name. (optional)\n  :role            | Find nodes with this computed role. (optional)\n\nReturn map keys:\n\n\n  Key    | Description \n  -------|------------ \n  :nodes | A list of `Accessibility.AXNode` matching the specified attributes,\nincluding nodes that are ignored for accessibility."
+ "Query a DOM node's accessibility subtree for accessible name and role.\nThis command computes the name and role for all nodes in the subtree, including those that are\nignored for accessibility, and returns those that match the specified name and role. If no DOM\nnode is specified, or the DOM node does not exist, the command returns an error. If neither\n`accessibleName` or `role` is specified, it returns all the accessibility nodes in the subtree.\n\nParameters map keys:\n\n\n  Key              | Description \n  -----------------|------------ \n  :node-id         | Identifier of the node for the root to query. (optional)\n  :backend-node-id | Identifier of the backend node for the root to query. (optional)\n  :object-id       | JavaScript object id of the node wrapper for the root to query. (optional)\n  :accessible-name | Find nodes with this computed name. (optional)\n  :role            | Find nodes with this computed role. (optional)\n\nReturn map keys:\n\n\n  Key    | Description \n  -------|------------ \n  :nodes | A list of `Accessibility.AXNode` matching the specified attributes,\nincluding nodes that are ignored for accessibility."
  ([]
   (query-ax-tree
    (c/get-current-connection)

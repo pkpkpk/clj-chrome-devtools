@@ -143,6 +143,14 @@
    ::outline-color]))
 
 (s/def
+ ::window-controls-overlay-config
+ (s/keys
+  :req-un
+  [::show-css
+   ::selected-platform
+   ::theme-color]))
+
+(s/def
  ::container-query-highlight-config
  (s/keys
   :req-un
@@ -174,7 +182,14 @@
 (s/def
  ::inspect-mode
  #{"none" "searchForUAShadowDOM" "captureAreaScreenshot"
-   "showDistances" "searchForNode"})
+   "searchForNode"})
+
+(s/def
+ ::inspected-element-anchor-config
+ (s/keys
+  :opt-un
+  [::node-id
+   ::backend-node-id]))
 (defn
  disable
  "Disables domain notifications."
@@ -450,7 +465,7 @@
 
 (defn
  highlight-frame
- "Highlights owner element of the frame with given id.\nDeprecated: Doesn't work reliablity and cannot be fixed due to process\nseparatation (the owner node might be in a different process). Determine\nthe owner node in the client and use highlightNode.\n\nParameters map keys:\n\n\n  Key                    | Description \n  -----------------------|------------ \n  :frame-id              | Identifier of the frame to highlight.\n  :content-color         | The content box highlight fill color (default: transparent). (optional)\n  :content-outline-color | The content box highlight outline color (default: transparent). (optional)"
+ "Highlights owner element of the frame with given id.\nDeprecated: Doesn't work reliably and cannot be fixed due to process\nseparation (the owner node might be in a different process). Determine\nthe owner node in the client and use highlightNode.\n\nParameters map keys:\n\n\n  Key                    | Description \n  -----------------------|------------ \n  :frame-id              | Identifier of the frame to highlight.\n  :content-color         | The content box highlight fill color (default: transparent). (optional)\n  :content-outline-color | The content box highlight outline color (default: transparent). (optional)"
  ([]
   (highlight-frame
    (c/get-current-connection)
@@ -613,7 +628,7 @@
 
 (defn
  highlight-rect
- "Highlights given rectangle. Coordinates are absolute with respect to the main frame viewport.\n\nParameters map keys:\n\n\n  Key            | Description \n  ---------------|------------ \n  :x             | X coordinate\n  :y             | Y coordinate\n  :width         | Rectangle width\n  :height        | Rectangle height\n  :color         | The highlight fill color (default: transparent). (optional)\n  :outline-color | The highlight outline color (default: transparent). (optional)"
+ "Highlights given rectangle. Coordinates are absolute with respect to the main frame viewport.\nIssue: the method does not handle device pixel ratio (DPR) correctly.\nThe coordinates currently have to be adjusted by the client\nif DPR is not 1 (see crbug.com/437807128).\n\nParameters map keys:\n\n\n  Key            | Description \n  ---------------|------------ \n  :x             | X coordinate\n  :y             | Y coordinate\n  :width         | Rectangle width\n  :height        | Rectangle height\n  :color         | The highlight fill color (default: transparent). (optional)\n  :outline-color | The highlight outline color (default: transparent). (optional)"
  ([]
   (highlight-rect
    (c/get-current-connection)
@@ -1122,6 +1137,49 @@
  (s/keys))
 
 (defn
+ set-show-inspected-element-anchor
+ "\n\nParameters map keys:\n\n\n  Key                              | Description \n  ---------------------------------|------------ \n  :inspected-element-anchor-config | Node identifier for which to show an anchor for."
+ ([]
+  (set-show-inspected-element-anchor
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys [inspected-element-anchor-config]}]
+  (set-show-inspected-element-anchor
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys [inspected-element-anchor-config]}]
+  (cmd/command
+   connection
+   "Overlay"
+   "setShowInspectedElementAnchor"
+   params
+   {:inspected-element-anchor-config "inspectedElementAnchorConfig"})))
+
+(s/fdef
+ set-show-inspected-element-anchor
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat
+   :params
+   (s/keys
+    :req-un
+    [::inspected-element-anchor-config]))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys
+    :req-un
+    [::inspected-element-anchor-config])))
+ :ret
+ (s/keys))
+
+(defn
  set-show-paint-rects
  "Requests that backend shows paint rectangles\n\nParameters map keys:\n\n\n  Key     | Description \n  --------|------------ \n  :result | True for showing paint rectangles"
  ([]
@@ -1295,7 +1353,7 @@
 
 (defn
  set-show-web-vitals
- "Request that backend shows an overlay with web vital metrics.\n\nParameters map keys:\n\n\n  Key   | Description \n  ------|------------ \n  :show | null"
+ "Deprecated, no longer has any effect.\n\nParameters map keys:\n\n\n  Key   | Description \n  ------|------------ \n  :show | null"
  ([]
   (set-show-web-vitals
    (c/get-current-connection)
@@ -1463,5 +1521,48 @@
    (s/keys
     :req-un
     [::isolated-element-highlight-configs])))
+ :ret
+ (s/keys))
+
+(defn
+ set-show-window-controls-overlay
+ "Show Window Controls Overlay for PWA\n\nParameters map keys:\n\n\n  Key                             | Description \n  --------------------------------|------------ \n  :window-controls-overlay-config | Window Controls Overlay data, null means hide Window Controls Overlay (optional)"
+ ([]
+  (set-show-window-controls-overlay
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys [window-controls-overlay-config]}]
+  (set-show-window-controls-overlay
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys [window-controls-overlay-config]}]
+  (cmd/command
+   connection
+   "Overlay"
+   "setShowWindowControlsOverlay"
+   params
+   {:window-controls-overlay-config "windowControlsOverlayConfig"})))
+
+(s/fdef
+ set-show-window-controls-overlay
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat
+   :params
+   (s/keys
+    :opt-un
+    [::window-controls-overlay-config]))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys
+    :opt-un
+    [::window-controls-overlay-config])))
  :ret
  (s/keys))

@@ -30,7 +30,10 @@
   :req-un
   [::cache-id
    ::security-origin
-   ::cache-name]))
+   ::storage-key
+   ::cache-name]
+  :opt-un
+  [::storage-bucket]))
 
 (s/def
  ::header
@@ -134,22 +137,25 @@
 
 (defn
  request-cache-names
- "Requests cache names.\n\nParameters map keys:\n\n\n  Key              | Description \n  -----------------|------------ \n  :security-origin | Security origin.\n\nReturn map keys:\n\n\n  Key     | Description \n  --------|------------ \n  :caches | Caches for the security origin."
+ "Requests cache names.\n\nParameters map keys:\n\n\n  Key              | Description \n  -----------------|------------ \n  :security-origin | At least and at most one of securityOrigin, storageKey, storageBucket must be specified.\nSecurity origin. (optional)\n  :storage-key     | Storage key. (optional)\n  :storage-bucket  | Storage bucket. If not specified, it uses the default bucket. (optional)\n\nReturn map keys:\n\n\n  Key     | Description \n  --------|------------ \n  :caches | Caches for the security origin."
  ([]
   (request-cache-names
    (c/get-current-connection)
    {}))
- ([{:as params, :keys [security-origin]}]
+ ([{:as params, :keys [security-origin storage-key storage-bucket]}]
   (request-cache-names
    (c/get-current-connection)
    params))
- ([connection {:as params, :keys [security-origin]}]
+ ([connection
+   {:as params, :keys [security-origin storage-key storage-bucket]}]
   (cmd/command
    connection
    "CacheStorage"
    "requestCacheNames"
    params
-   {:security-origin "securityOrigin"})))
+   {:security-origin "securityOrigin",
+    :storage-key "storageKey",
+    :storage-bucket "storageBucket"})))
 
 (s/fdef
  request-cache-names
@@ -161,8 +167,10 @@
   (s/cat
    :params
    (s/keys
-    :req-un
-    [::security-origin]))
+    :opt-un
+    [::security-origin
+     ::storage-key
+     ::storage-bucket]))
   :connection-and-params
   (s/cat
    :connection
@@ -170,8 +178,10 @@
     c/connection?)
    :params
    (s/keys
-    :req-un
-    [::security-origin])))
+    :opt-un
+    [::security-origin
+     ::storage-key
+     ::storage-bucket])))
  :ret
  (s/keys
   :req-un

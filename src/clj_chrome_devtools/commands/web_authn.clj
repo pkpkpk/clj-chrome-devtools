@@ -14,7 +14,7 @@
 
 (s/def
  ::ctap2-version
- #{"ctap2_1" "ctap2_0"})
+ #{"ctap2_2" "ctap2_1" "ctap2_0"})
 
 (s/def
  ::authenticator-transport
@@ -33,8 +33,13 @@
    ::has-large-blob
    ::has-cred-blob
    ::has-min-pin-length
+   ::has-prf
+   ::has-hmac-secret
+   ::has-hmac-secret-mc
    ::automatic-presence-simulation
-   ::is-user-verified]))
+   ::is-user-verified
+   ::default-backup-eligibility
+   ::default-backup-state]))
 
 (s/def
  ::credential
@@ -47,25 +52,29 @@
   :opt-un
   [::rp-id
    ::user-handle
-   ::large-blob]))
+   ::large-blob
+   ::backup-eligibility
+   ::backup-state
+   ::user-name
+   ::user-display-name]))
 (defn
  enable
- "Enable the WebAuthn domain and start intercepting credential storage and\nretrieval with a virtual authenticator."
+ "Enable the WebAuthn domain and start intercepting credential storage and\nretrieval with a virtual authenticator.\n\nParameters map keys:\n\n\n  Key        | Description \n  -----------|------------ \n  :enable-ui | Whether to enable the WebAuthn user interface. Enabling the UI is\nrecommended for debugging and demo purposes, as it is closer to the real\nexperience. Disabling the UI is recommended for automated testing.\nSupported at the embedder's discretion if UI is available.\nDefaults to false. (optional)"
  ([]
   (enable
    (c/get-current-connection)
    {}))
- ([{:as params, :keys []}]
+ ([{:as params, :keys [enable-ui]}]
   (enable
    (c/get-current-connection)
    params))
- ([connection {:as params, :keys []}]
+ ([connection {:as params, :keys [enable-ui]}]
   (cmd/command
    connection
    "WebAuthn"
    "enable"
    params
-   {})))
+   {:enable-ui "enableUI"})))
 
 (s/fdef
  enable
@@ -74,14 +83,20 @@
   :no-args
   (s/cat)
   :just-params
-  (s/cat :params (s/keys))
+  (s/cat
+   :params
+   (s/keys
+    :opt-un
+    [::enable-ui]))
   :connection-and-params
   (s/cat
    :connection
    (s/?
     c/connection?)
    :params
-   (s/keys)))
+   (s/keys
+    :opt-un
+    [::enable-ui])))
  :ret
  (s/keys))
 
@@ -166,6 +181,63 @@
  (s/keys
   :req-un
   [::authenticator-id]))
+
+(defn
+ set-response-override-bits
+ "Resets parameters isBogusSignature, isBadUV, isBadUP to false if they are not present.\n\nParameters map keys:\n\n\n  Key                 | Description \n  --------------------|------------ \n  :authenticator-id   | null\n  :is-bogus-signature | If isBogusSignature is set, overrides the signature in the authenticator response to be zero.\nDefaults to false. (optional)\n  :is-bad-uv          | If isBadUV is set, overrides the UV bit in the flags in the authenticator response to\nbe zero. Defaults to false. (optional)\n  :is-bad-up          | If isBadUP is set, overrides the UP bit in the flags in the authenticator response to\nbe zero. Defaults to false. (optional)"
+ ([]
+  (set-response-override-bits
+   (c/get-current-connection)
+   {}))
+ ([{:as params,
+    :keys [authenticator-id is-bogus-signature is-bad-uv is-bad-up]}]
+  (set-response-override-bits
+   (c/get-current-connection)
+   params))
+ ([connection
+   {:as params,
+    :keys [authenticator-id is-bogus-signature is-bad-uv is-bad-up]}]
+  (cmd/command
+   connection
+   "WebAuthn"
+   "setResponseOverrideBits"
+   params
+   {:authenticator-id "authenticatorId",
+    :is-bogus-signature "isBogusSignature",
+    :is-bad-uv "isBadUV",
+    :is-bad-up "isBadUP"})))
+
+(s/fdef
+ set-response-override-bits
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat
+   :params
+   (s/keys
+    :req-un
+    [::authenticator-id]
+    :opt-un
+    [::is-bogus-signature
+     ::is-bad-uv
+     ::is-bad-up]))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys
+    :req-un
+    [::authenticator-id]
+    :opt-un
+    [::is-bogus-signature
+     ::is-bad-uv
+     ::is-bad-up])))
+ :ret
+ (s/keys))
 
 (defn
  remove-virtual-authenticator
@@ -525,5 +597,64 @@
     :req-un
     [::authenticator-id
      ::enabled])))
+ :ret
+ (s/keys))
+
+(defn
+ set-credential-properties
+ "Allows setting credential properties.\nhttps://w3c.github.io/webauthn/#sctn-automation-set-credential-properties\n\nParameters map keys:\n\n\n  Key                 | Description \n  --------------------|------------ \n  :authenticator-id   | null\n  :credential-id      | null\n  :backup-eligibility | null (optional)\n  :backup-state       | null (optional)"
+ ([]
+  (set-credential-properties
+   (c/get-current-connection)
+   {}))
+ ([{:as params,
+    :keys
+    [authenticator-id credential-id backup-eligibility backup-state]}]
+  (set-credential-properties
+   (c/get-current-connection)
+   params))
+ ([connection
+   {:as params,
+    :keys
+    [authenticator-id credential-id backup-eligibility backup-state]}]
+  (cmd/command
+   connection
+   "WebAuthn"
+   "setCredentialProperties"
+   params
+   {:authenticator-id "authenticatorId",
+    :credential-id "credentialId",
+    :backup-eligibility "backupEligibility",
+    :backup-state "backupState"})))
+
+(s/fdef
+ set-credential-properties
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat
+   :params
+   (s/keys
+    :req-un
+    [::authenticator-id
+     ::credential-id]
+    :opt-un
+    [::backup-eligibility
+     ::backup-state]))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys
+    :req-un
+    [::authenticator-id
+     ::credential-id]
+    :opt-un
+    [::backup-eligibility
+     ::backup-state])))
  :ret
  (s/keys))

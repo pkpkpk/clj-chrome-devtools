@@ -68,25 +68,37 @@
    ::array]))
 (defn
  clear-object-store
- "Clears all entries from an object store.\n\nParameters map keys:\n\n\n  Key                | Description \n  -------------------|------------ \n  :security-origin   | Security origin.\n  :database-name     | Database name.\n  :object-store-name | Object store name."
+ "Clears all entries from an object store.\n\nParameters map keys:\n\n\n  Key                | Description \n  -------------------|------------ \n  :security-origin   | At least and at most one of securityOrigin, storageKey, or storageBucket must be specified.\nSecurity origin. (optional)\n  :storage-key       | Storage key. (optional)\n  :storage-bucket    | Storage bucket. If not specified, it uses the default bucket. (optional)\n  :database-name     | Database name.\n  :object-store-name | Object store name."
  ([]
   (clear-object-store
    (c/get-current-connection)
    {}))
  ([{:as params,
-    :keys [security-origin database-name object-store-name]}]
+    :keys
+    [security-origin
+     storage-key
+     storage-bucket
+     database-name
+     object-store-name]}]
   (clear-object-store
    (c/get-current-connection)
    params))
  ([connection
    {:as params,
-    :keys [security-origin database-name object-store-name]}]
+    :keys
+    [security-origin
+     storage-key
+     storage-bucket
+     database-name
+     object-store-name]}]
   (cmd/command
    connection
    "IndexedDB"
    "clearObjectStore"
    params
    {:security-origin "securityOrigin",
+    :storage-key "storageKey",
+    :storage-bucket "storageBucket",
     :database-name "databaseName",
     :object-store-name "objectStoreName"})))
 
@@ -101,9 +113,12 @@
    :params
    (s/keys
     :req-un
+    [::database-name
+     ::object-store-name]
+    :opt-un
     [::security-origin
-     ::database-name
-     ::object-store-name]))
+     ::storage-key
+     ::storage-bucket]))
   :connection-and-params
   (s/cat
    :connection
@@ -112,30 +127,39 @@
    :params
    (s/keys
     :req-un
+    [::database-name
+     ::object-store-name]
+    :opt-un
     [::security-origin
-     ::database-name
-     ::object-store-name])))
+     ::storage-key
+     ::storage-bucket])))
  :ret
  (s/keys))
 
 (defn
  delete-database
- "Deletes a database.\n\nParameters map keys:\n\n\n  Key              | Description \n  -----------------|------------ \n  :security-origin | Security origin.\n  :database-name   | Database name."
+ "Deletes a database.\n\nParameters map keys:\n\n\n  Key              | Description \n  -----------------|------------ \n  :security-origin | At least and at most one of securityOrigin, storageKey, or storageBucket must be specified.\nSecurity origin. (optional)\n  :storage-key     | Storage key. (optional)\n  :storage-bucket  | Storage bucket. If not specified, it uses the default bucket. (optional)\n  :database-name   | Database name."
  ([]
   (delete-database
    (c/get-current-connection)
    {}))
- ([{:as params, :keys [security-origin database-name]}]
+ ([{:as params,
+    :keys [security-origin storage-key storage-bucket database-name]}]
   (delete-database
    (c/get-current-connection)
    params))
- ([connection {:as params, :keys [security-origin database-name]}]
+ ([connection
+   {:as params,
+    :keys [security-origin storage-key storage-bucket database-name]}]
   (cmd/command
    connection
    "IndexedDB"
    "deleteDatabase"
    params
-   {:security-origin "securityOrigin", :database-name "databaseName"})))
+   {:security-origin "securityOrigin",
+    :storage-key "storageKey",
+    :storage-bucket "storageBucket",
+    :database-name "databaseName"})))
 
 (s/fdef
  delete-database
@@ -148,8 +172,11 @@
    :params
    (s/keys
     :req-un
+    [::database-name]
+    :opt-un
     [::security-origin
-     ::database-name]))
+     ::storage-key
+     ::storage-bucket]))
   :connection-and-params
   (s/cat
    :connection
@@ -158,32 +185,49 @@
    :params
    (s/keys
     :req-un
+    [::database-name]
+    :opt-un
     [::security-origin
-     ::database-name])))
+     ::storage-key
+     ::storage-bucket])))
  :ret
  (s/keys))
 
 (defn
  delete-object-store-entries
- "Delete a range of entries from an object store\n\nParameters map keys:\n\n\n  Key                | Description \n  -------------------|------------ \n  :security-origin   | null\n  :database-name     | null\n  :object-store-name | null\n  :key-range         | Range of entry keys to delete"
+ "Delete a range of entries from an object store\n\nParameters map keys:\n\n\n  Key                | Description \n  -------------------|------------ \n  :security-origin   | At least and at most one of securityOrigin, storageKey, or storageBucket must be specified.\nSecurity origin. (optional)\n  :storage-key       | Storage key. (optional)\n  :storage-bucket    | Storage bucket. If not specified, it uses the default bucket. (optional)\n  :database-name     | null\n  :object-store-name | null\n  :key-range         | Range of entry keys to delete"
  ([]
   (delete-object-store-entries
    (c/get-current-connection)
    {}))
  ([{:as params,
-    :keys [security-origin database-name object-store-name key-range]}]
+    :keys
+    [security-origin
+     storage-key
+     storage-bucket
+     database-name
+     object-store-name
+     key-range]}]
   (delete-object-store-entries
    (c/get-current-connection)
    params))
  ([connection
    {:as params,
-    :keys [security-origin database-name object-store-name key-range]}]
+    :keys
+    [security-origin
+     storage-key
+     storage-bucket
+     database-name
+     object-store-name
+     key-range]}]
   (cmd/command
    connection
    "IndexedDB"
    "deleteObjectStoreEntries"
    params
    {:security-origin "securityOrigin",
+    :storage-key "storageKey",
+    :storage-bucket "storageBucket",
     :database-name "databaseName",
     :object-store-name "objectStoreName",
     :key-range "keyRange"})))
@@ -199,10 +243,13 @@
    :params
    (s/keys
     :req-un
-    [::security-origin
-     ::database-name
+    [::database-name
      ::object-store-name
-     ::key-range]))
+     ::key-range]
+    :opt-un
+    [::security-origin
+     ::storage-key
+     ::storage-bucket]))
   :connection-and-params
   (s/cat
    :connection
@@ -211,10 +258,13 @@
    :params
    (s/keys
     :req-un
-    [::security-origin
-     ::database-name
+    [::database-name
      ::object-store-name
-     ::key-range])))
+     ::key-range]
+    :opt-un
+    [::security-origin
+     ::storage-key
+     ::storage-bucket])))
  :ret
  (s/keys))
 
@@ -294,7 +344,7 @@
 
 (defn
  request-data
- "Requests data from object store or index.\n\nParameters map keys:\n\n\n  Key                | Description \n  -------------------|------------ \n  :security-origin   | Security origin.\n  :database-name     | Database name.\n  :object-store-name | Object store name.\n  :index-name        | Index name, empty string for object store data requests.\n  :skip-count        | Number of records to skip.\n  :page-size         | Number of records to fetch.\n  :key-range         | Key range. (optional)\n\nReturn map keys:\n\n\n  Key                        | Description \n  ---------------------------|------------ \n  :object-store-data-entries | Array of object store data entries.\n  :has-more                  | If true, there are more entries to fetch in the given range."
+ "Requests data from object store or index.\n\nParameters map keys:\n\n\n  Key                | Description \n  -------------------|------------ \n  :security-origin   | At least and at most one of securityOrigin, storageKey, or storageBucket must be specified.\nSecurity origin. (optional)\n  :storage-key       | Storage key. (optional)\n  :storage-bucket    | Storage bucket. If not specified, it uses the default bucket. (optional)\n  :database-name     | Database name.\n  :object-store-name | Object store name.\n  :index-name        | Index name. If not specified, it performs an object store data request. (optional)\n  :skip-count        | Number of records to skip.\n  :page-size         | Number of records to fetch.\n  :key-range         | Key range. (optional)\n\nReturn map keys:\n\n\n  Key                        | Description \n  ---------------------------|------------ \n  :object-store-data-entries | Array of object store data entries.\n  :has-more                  | If true, there are more entries to fetch in the given range."
  ([]
   (request-data
    (c/get-current-connection)
@@ -302,6 +352,8 @@
  ([{:as params,
     :keys
     [security-origin
+     storage-key
+     storage-bucket
      database-name
      object-store-name
      index-name
@@ -315,6 +367,8 @@
    {:as params,
     :keys
     [security-origin
+     storage-key
+     storage-bucket
      database-name
      object-store-name
      index-name
@@ -327,6 +381,8 @@
    "requestData"
    params
    {:security-origin "securityOrigin",
+    :storage-key "storageKey",
+    :storage-bucket "storageBucket",
     :database-name "databaseName",
     :object-store-name "objectStoreName",
     :index-name "indexName",
@@ -345,14 +401,16 @@
    :params
    (s/keys
     :req-un
-    [::security-origin
-     ::database-name
+    [::database-name
      ::object-store-name
-     ::index-name
      ::skip-count
      ::page-size]
     :opt-un
-    [::key-range]))
+    [::security-origin
+     ::storage-key
+     ::storage-bucket
+     ::index-name
+     ::key-range]))
   :connection-and-params
   (s/cat
    :connection
@@ -361,14 +419,16 @@
    :params
    (s/keys
     :req-un
-    [::security-origin
-     ::database-name
+    [::database-name
      ::object-store-name
-     ::index-name
      ::skip-count
      ::page-size]
     :opt-un
-    [::key-range])))
+    [::security-origin
+     ::storage-key
+     ::storage-bucket
+     ::index-name
+     ::key-range])))
  :ret
  (s/keys
   :req-un
@@ -377,25 +437,37 @@
 
 (defn
  get-metadata
- "Gets metadata of an object store\n\nParameters map keys:\n\n\n  Key                | Description \n  -------------------|------------ \n  :security-origin   | Security origin.\n  :database-name     | Database name.\n  :object-store-name | Object store name.\n\nReturn map keys:\n\n\n  Key                  | Description \n  ---------------------|------------ \n  :entries-count       | the entries count\n  :key-generator-value | the current value of key generator, to become the next inserted\nkey into the object store. Valid if objectStore.autoIncrement\nis true."
+ "Gets metadata of an object store.\n\nParameters map keys:\n\n\n  Key                | Description \n  -------------------|------------ \n  :security-origin   | At least and at most one of securityOrigin, storageKey, or storageBucket must be specified.\nSecurity origin. (optional)\n  :storage-key       | Storage key. (optional)\n  :storage-bucket    | Storage bucket. If not specified, it uses the default bucket. (optional)\n  :database-name     | Database name.\n  :object-store-name | Object store name.\n\nReturn map keys:\n\n\n  Key                  | Description \n  ---------------------|------------ \n  :entries-count       | the entries count\n  :key-generator-value | the current value of key generator, to become the next inserted\nkey into the object store. Valid if objectStore.autoIncrement\nis true."
  ([]
   (get-metadata
    (c/get-current-connection)
    {}))
  ([{:as params,
-    :keys [security-origin database-name object-store-name]}]
+    :keys
+    [security-origin
+     storage-key
+     storage-bucket
+     database-name
+     object-store-name]}]
   (get-metadata
    (c/get-current-connection)
    params))
  ([connection
    {:as params,
-    :keys [security-origin database-name object-store-name]}]
+    :keys
+    [security-origin
+     storage-key
+     storage-bucket
+     database-name
+     object-store-name]}]
   (cmd/command
    connection
    "IndexedDB"
    "getMetadata"
    params
    {:security-origin "securityOrigin",
+    :storage-key "storageKey",
+    :storage-bucket "storageBucket",
     :database-name "databaseName",
     :object-store-name "objectStoreName"})))
 
@@ -410,9 +482,12 @@
    :params
    (s/keys
     :req-un
+    [::database-name
+     ::object-store-name]
+    :opt-un
     [::security-origin
-     ::database-name
-     ::object-store-name]))
+     ::storage-key
+     ::storage-bucket]))
   :connection-and-params
   (s/cat
    :connection
@@ -421,9 +496,12 @@
    :params
    (s/keys
     :req-un
+    [::database-name
+     ::object-store-name]
+    :opt-un
     [::security-origin
-     ::database-name
-     ::object-store-name])))
+     ::storage-key
+     ::storage-bucket])))
  :ret
  (s/keys
   :req-un
@@ -432,22 +510,28 @@
 
 (defn
  request-database
- "Requests database with given name in given frame.\n\nParameters map keys:\n\n\n  Key              | Description \n  -----------------|------------ \n  :security-origin | Security origin.\n  :database-name   | Database name.\n\nReturn map keys:\n\n\n  Key                          | Description \n  -----------------------------|------------ \n  :database-with-object-stores | Database with an array of object stores."
+ "Requests database with given name in given frame.\n\nParameters map keys:\n\n\n  Key              | Description \n  -----------------|------------ \n  :security-origin | At least and at most one of securityOrigin, storageKey, or storageBucket must be specified.\nSecurity origin. (optional)\n  :storage-key     | Storage key. (optional)\n  :storage-bucket  | Storage bucket. If not specified, it uses the default bucket. (optional)\n  :database-name   | Database name.\n\nReturn map keys:\n\n\n  Key                          | Description \n  -----------------------------|------------ \n  :database-with-object-stores | Database with an array of object stores."
  ([]
   (request-database
    (c/get-current-connection)
    {}))
- ([{:as params, :keys [security-origin database-name]}]
+ ([{:as params,
+    :keys [security-origin storage-key storage-bucket database-name]}]
   (request-database
    (c/get-current-connection)
    params))
- ([connection {:as params, :keys [security-origin database-name]}]
+ ([connection
+   {:as params,
+    :keys [security-origin storage-key storage-bucket database-name]}]
   (cmd/command
    connection
    "IndexedDB"
    "requestDatabase"
    params
-   {:security-origin "securityOrigin", :database-name "databaseName"})))
+   {:security-origin "securityOrigin",
+    :storage-key "storageKey",
+    :storage-bucket "storageBucket",
+    :database-name "databaseName"})))
 
 (s/fdef
  request-database
@@ -460,8 +544,11 @@
    :params
    (s/keys
     :req-un
+    [::database-name]
+    :opt-un
     [::security-origin
-     ::database-name]))
+     ::storage-key
+     ::storage-bucket]))
   :connection-and-params
   (s/cat
    :connection
@@ -470,8 +557,11 @@
    :params
    (s/keys
     :req-un
+    [::database-name]
+    :opt-un
     [::security-origin
-     ::database-name])))
+     ::storage-key
+     ::storage-bucket])))
  :ret
  (s/keys
   :req-un
@@ -479,22 +569,25 @@
 
 (defn
  request-database-names
- "Requests database names for given security origin.\n\nParameters map keys:\n\n\n  Key              | Description \n  -----------------|------------ \n  :security-origin | Security origin.\n\nReturn map keys:\n\n\n  Key             | Description \n  ----------------|------------ \n  :database-names | Database names for origin."
+ "Requests database names for given security origin.\n\nParameters map keys:\n\n\n  Key              | Description \n  -----------------|------------ \n  :security-origin | At least and at most one of securityOrigin, storageKey, or storageBucket must be specified.\nSecurity origin. (optional)\n  :storage-key     | Storage key. (optional)\n  :storage-bucket  | Storage bucket. If not specified, it uses the default bucket. (optional)\n\nReturn map keys:\n\n\n  Key             | Description \n  ----------------|------------ \n  :database-names | Database names for origin."
  ([]
   (request-database-names
    (c/get-current-connection)
    {}))
- ([{:as params, :keys [security-origin]}]
+ ([{:as params, :keys [security-origin storage-key storage-bucket]}]
   (request-database-names
    (c/get-current-connection)
    params))
- ([connection {:as params, :keys [security-origin]}]
+ ([connection
+   {:as params, :keys [security-origin storage-key storage-bucket]}]
   (cmd/command
    connection
    "IndexedDB"
    "requestDatabaseNames"
    params
-   {:security-origin "securityOrigin"})))
+   {:security-origin "securityOrigin",
+    :storage-key "storageKey",
+    :storage-bucket "storageBucket"})))
 
 (s/fdef
  request-database-names
@@ -506,8 +599,10 @@
   (s/cat
    :params
    (s/keys
-    :req-un
-    [::security-origin]))
+    :opt-un
+    [::security-origin
+     ::storage-key
+     ::storage-bucket]))
   :connection-and-params
   (s/cat
    :connection
@@ -515,8 +610,10 @@
     c/connection?)
    :params
    (s/keys
-    :req-un
-    [::security-origin])))
+    :opt-un
+    [::security-origin
+     ::storage-key
+     ::storage-bucket])))
  :ret
  (s/keys
   :req-un

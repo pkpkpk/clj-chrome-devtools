@@ -1,5 +1,5 @@
 (ns clj-chrome-devtools.commands.event-breakpoints
-  "EventBreakpoints permits setting breakpoints on particular operations and\nevents in targets that run JavaScript but do not have a DOM.\nJavaScript execution will stop on these operations as if there was a regular\nbreakpoint set."
+  "EventBreakpoints permits setting JavaScript breakpoints on operations and events\noccurring in native code invoked from JavaScript. Once breakpoint is hit, it is\nreported through Debugger domain, similarly to regular breakpoints being hit."
   (:require [clojure.spec.alpha :as s]
             [clj-chrome-devtools.impl.command :as cmd]
             [clj-chrome-devtools.impl.connection :as c]))
@@ -87,5 +87,42 @@
    (s/keys
     :req-un
     [::event-name])))
+ :ret
+ (s/keys))
+
+(defn
+ disable
+ "Removes all breakpoints"
+ ([]
+  (disable
+   (c/get-current-connection)
+   {}))
+ ([{:as params, :keys []}]
+  (disable
+   (c/get-current-connection)
+   params))
+ ([connection {:as params, :keys []}]
+  (cmd/command
+   connection
+   "EventBreakpoints"
+   "disable"
+   params
+   {})))
+
+(s/fdef
+ disable
+ :args
+ (s/or
+  :no-args
+  (s/cat)
+  :just-params
+  (s/cat :params (s/keys))
+  :connection-and-params
+  (s/cat
+   :connection
+   (s/?
+    c/connection?)
+   :params
+   (s/keys)))
  :ret
  (s/keys))

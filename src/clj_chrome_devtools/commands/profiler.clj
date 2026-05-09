@@ -56,27 +56,6 @@
   [::script-id
    ::url
    ::functions]))
-
-(s/def
- ::type-object
- (s/keys
-  :req-un
-  [::name]))
-
-(s/def
- ::type-profile-entry
- (s/keys
-  :req-un
-  [::offset
-   ::types]))
-
-(s/def
- ::script-type-profile
- (s/keys
-  :req-un
-  [::script-id
-   ::url
-   ::entries]))
 (defn
  disable
  ""
@@ -323,43 +302,6 @@
   [::timestamp]))
 
 (defn
- start-type-profile
- "Enable type profile."
- ([]
-  (start-type-profile
-   (c/get-current-connection)
-   {}))
- ([{:as params, :keys []}]
-  (start-type-profile
-   (c/get-current-connection)
-   params))
- ([connection {:as params, :keys []}]
-  (cmd/command
-   connection
-   "Profiler"
-   "startTypeProfile"
-   params
-   {})))
-
-(s/fdef
- start-type-profile
- :args
- (s/or
-  :no-args
-  (s/cat)
-  :just-params
-  (s/cat :params (s/keys))
-  :connection-and-params
-  (s/cat
-   :connection
-   (s/?
-    c/connection?)
-   :params
-   (s/keys)))
- :ret
- (s/keys))
-
-(defn
  stop
  "\n\nReturn map keys:\n\n\n  Key      | Description \n  ---------|------------ \n  :profile | Recorded profile."
  ([]
@@ -436,43 +378,6 @@
  (s/keys))
 
 (defn
- stop-type-profile
- "Disable type profile. Disabling releases type profile data collected so far."
- ([]
-  (stop-type-profile
-   (c/get-current-connection)
-   {}))
- ([{:as params, :keys []}]
-  (stop-type-profile
-   (c/get-current-connection)
-   params))
- ([connection {:as params, :keys []}]
-  (cmd/command
-   connection
-   "Profiler"
-   "stopTypeProfile"
-   params
-   {})))
-
-(s/fdef
- stop-type-profile
- :args
- (s/or
-  :no-args
-  (s/cat)
-  :just-params
-  (s/cat :params (s/keys))
-  :connection-and-params
-  (s/cat
-   :connection
-   (s/?
-    c/connection?)
-   :params
-   (s/keys)))
- :ret
- (s/keys))
-
-(defn
  take-precise-coverage
  "Collect coverage data for the current isolate, and resets execution counters. Precise code\ncoverage needs to have started.\n\nReturn map keys:\n\n\n  Key        | Description \n  -----------|------------ \n  :result    | Coverage data for the current isolate.\n  :timestamp | Monotonically increasing time (in seconds) when the coverage update was taken in the backend."
  ([]
@@ -511,42 +416,3 @@
   :req-un
   [::result
    ::timestamp]))
-
-(defn
- take-type-profile
- "Collect type profile.\n\nReturn map keys:\n\n\n  Key     | Description \n  --------|------------ \n  :result | Type profile for all scripts since startTypeProfile() was turned on."
- ([]
-  (take-type-profile
-   (c/get-current-connection)
-   {}))
- ([{:as params, :keys []}]
-  (take-type-profile
-   (c/get-current-connection)
-   params))
- ([connection {:as params, :keys []}]
-  (cmd/command
-   connection
-   "Profiler"
-   "takeTypeProfile"
-   params
-   {})))
-
-(s/fdef
- take-type-profile
- :args
- (s/or
-  :no-args
-  (s/cat)
-  :just-params
-  (s/cat :params (s/keys))
-  :connection-and-params
-  (s/cat
-   :connection
-   (s/?
-    c/connection?)
-   :params
-   (s/keys)))
- :ret
- (s/keys
-  :req-un
-  [::result]))

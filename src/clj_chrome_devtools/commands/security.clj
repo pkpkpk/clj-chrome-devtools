@@ -1,5 +1,4 @@
 (ns clj-chrome-devtools.commands.security
-  "Security"
   (:require [clojure.spec.alpha :as s]
             [clj-chrome-devtools.impl.command :as cmd]
             [clj-chrome-devtools.impl.connection :as c]))
